@@ -13,9 +13,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@xterm/xterm": "6.0.0",
     "antd": "6.5.4",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "zustand": "5.0.14"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",

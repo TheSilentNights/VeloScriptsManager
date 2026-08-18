@@ -1,15 +1,23 @@
+import {type CSSProperties} from 'react'
+import {AppShell} from "./AppShell.tsx";
 
-import type { CSSProperties } from 'react'
+export default function MainWindow() {
 
-export default function MainWindow(){
     return (
-        <div id={"main-window"} style={mainWindowStyle}>
-            <div style={glassBottomBarStyle} />
+        <div id={"main-window-background"} style={mainWindowBackgroundStyle}>
+            <div id={"main-window"} style={{
+                width: '100%',
+                height: '100%',
+                padding: '10px',
+                boxSizing: 'border-box',
+            }}>
+                <AppShell/>
+            </div>
         </div>
     )
 }
 
-const mainWindowStyle: CSSProperties = {
+const mainWindowBackgroundStyle: CSSProperties = {
     position: 'relative',
     width: '100%',
     height: '100%',
@@ -19,7 +27,3 @@ const mainWindowStyle: CSSProperties = {
     overflow: 'hidden',
 }
 
-const glassBottomBarStyle: CSSProperties = {
-    position: 'absolute',
-    bottom: 0,
-}
