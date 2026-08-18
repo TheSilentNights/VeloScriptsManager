@@ -1,16 +1,17 @@
 .glass-sider {
+  --hover-color: #ce43e6;
+
   .ant-menu {
     background: transparent;
     border: none;
   }
 
   .ant-menu-item-group-title {
-    color: #9ca3af;
+    color: #6b7280;
     font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     padding: 16px 24px 8px;
-    text-transform: uppercase;
   }
 
   .ant-menu-item {
@@ -22,20 +23,27 @@
 
     &:hover {
       color: #111827;
+      background-color: #f3f4f6;
     }
   }
 
   .ant-menu-item-selected {
     background-color: #ffffff !important;
-    color: #111827 !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    color: var(--hover-color) !important;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   }
 
   .ant-menu-item-icon {
     color: #6b7280;
   }
 
-  .ant-menu-item-selected .ant-menu-item-icon {
+.ant-menu-item:hover .ant-menu-item-icon {
     color: #111827;
+  }
+
+  .ant-menu-item-selected .ant-menu-item-icon,
+  .ant-menu-item-selected:hover .ant-menu-item-icon {
+    color: var(--hover-color);
   }
 }
