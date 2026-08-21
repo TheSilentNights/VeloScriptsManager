@@ -4,10 +4,65 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 type Config struct {
 	FontSize int `json:"fontSize"`
+}
+
+var (
+	globalConfig *Config
+	configPath   string
+	configMu     sync.RWMutex
+	configOnce   sync.Once
+)
+
+func InitConfig(path string) error {
+	var initErr error
+	configOnce.Do(func() {
+		configPath = path
+		globalConfig = &Config{}
+		initErr = globalConfig.LoadOrCreate(path)
+	})
+	return initErr
+}
+
+func GetConfig() Config {
+	configMu.RLock()
+	defer configMu.RUnlock()
+
+	if globalConfig == nil {
+		return Config{}
+	}
+
+	return *globalConfig
+}
+
+func SetConfig(c Config) error {
+	configMu.Lock()
+	defer configMu.Unlock()
+
+	if globalConfig == nil {
+		return os.ErrInvalid
+	}
+
+	*globalConfig = c
+	return globalConfig.SaveConfig(configPath)
+}
+
+func Update(fn func(*Config)) error {
+	configMu.Lock()
+	defer configMu.Unlock()
+
+	if globalConfig == nil {
+		return os.ErrInvalid
+	}
+
+	//fn updates the config
+	fn(globalConfig)
+
+	return globalConfig.SaveConfig(configPath)
 }
 
 func (config *Config) LoadConfig(path string) error {
