@@ -6,8 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var shutdownChan = make(chan struct{})
-
 type Router struct {
 	service *services.Service
 }
@@ -31,17 +29,12 @@ func (router *Router) getStatus(c *gin.Context) {
 }
 
 func (router *Router) stopServer(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "server is stopping",
-	})
-
-	close(shutdownChan)
+	router.service.StopServer(c)
 }
 
 func (router *Router) getStoredScripts(c *gin.Context) {
 	router.service.ListScripts(c)
 }
-
 func getRunningTaskList(c *gin.Context) {
 
 }

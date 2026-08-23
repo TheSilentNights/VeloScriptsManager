@@ -45,8 +45,8 @@ func main() {
 		}
 	}()
 
-	//wait for the shutdown Channel
-	<-shutdownChan
+	//wait for the shutdown Channel to close
+	<-service.GetShutdownSignalChan()
 
 	err = server.Shutdown(context.Background())
 	if err != nil {
