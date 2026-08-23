@@ -2,6 +2,8 @@ package storage
 
 import (
 	"database/sql"
+
+	squirrel "github.com/Masterminds/squirrel"
 )
 
 type ScriptRepo struct {
@@ -12,11 +14,22 @@ func CreateScriptRepo(db *sql.DB) *ScriptRepo {
 	return &ScriptRepo{db: db}
 }
 
-func (r *ScriptRepo) List() ([]Script, error) {
-	rows, err := r.db.Query(`SELECT id, name, command, work_dir FROM scripts ORDER BY name`)
+func (sr *ScriptRepo) List() ([]Script, error) {
+	query, args, err := squirrel.
+		Select("id", "name", "command", "work_dir").
+		From("scripts").
+		OrderBy("name").
+		ToSql()
 	if err != nil {
 		return nil, err
 	}
+
+	rows, err := sr.db.Query(query, args...)
+
+	if err != nil {
+		return nil, err
+	}
+
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
 		if err != nil {
@@ -33,30 +46,56 @@ func (r *ScriptRepo) List() ([]Script, error) {
 		}
 		out = append(out, s)
 	}
+
 	return out, rows.Err()
 }
 
-func (r *ScriptRepo) Get(id string) (*Script, error) {
-	row := r.db.QueryRow(`SELECT id, name, command, work_dir FROM scripts WHERE id = ?`, id)
+func (sr *ScriptRepo) Get(id string) (*Script, error) {
+	query, args, err := squirrel.
+		Select("id", "name", "command", "work_dir").
+		From("scripts").
+		Where(squirrel.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	row := sr.db.QueryRow(query, args...)
+
 	var s Script
 	if err := row.Scan(&s.ID, &s.Name, &s.Command, &s.WorkDir); err != nil {
 		return nil, err
 	}
+
 	return &s, nil
 }
 
-func (r *ScriptRepo) Upsert(s Script) error {
-	_, err := r.db.Exec(`
-		INSERT INTO scripts (id, name, command, work_dir)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			name=excluded.name, command=excluded.command,
-			work_dir=excluded.work_dir, 
-	`, s.ID, s.Name, s.Command, s.WorkDir)
+func (sr *ScriptRepo) Upsert(s Script) error {
+	query, args, err := squirrel.
+		Insert("scripts").
+		Columns("id", "name", "command", "work_dir").
+		Values(s.ID, s.Name, s.Command, s.WorkDir).
+		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, command=excluded.command, work_dir=excluded.work_dir").
+		ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = sr.db.Exec(query, args...)
+
 	return err
 }
 
-func (r *ScriptRepo) Delete(id string) error {
-	_, err := r.db.Exec(`DELETE FROM scripts WHERE id = ?`, id)
+func (sr *ScriptRepo) Delete(id string) error {
+	query, args, err := squirrel.
+		Delete("scripts").
+		Where(squirrel.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = sr.db.Exec(query, args...)
+
 	return err
 }

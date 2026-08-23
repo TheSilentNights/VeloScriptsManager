@@ -10,7 +10,7 @@ func Open(dbPath string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
-	db.SetMaxOpenConns(1) // sqlite 单文件，单连接足够，避免并发写冲突
+	db.SetMaxOpenConns(1)
 
 	if err := migrate(db); err != nil {
 		err := db.Close()
