@@ -25,6 +25,7 @@ func OpenOrCreate(dbPath string) (*sql.DB, error) {
 func migrate(db *sql.DB) error {
 	stmts := []string{
 		scriptsCreateTableSql,
+		environmentCreateTableSql,
 	}
 	for _, s := range stmts {
 		if _, err := db.Exec(s); err != nil {

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// 注意，这里的exec会自动根据runner判断从哪里截取可执行。如果没有预设的runner会从params里找到第一个参数作为runner来执行
+// Exec 注意，这里的exec会自动根据runner判断从哪里截取可执行。如果没有预设的runner会从params里找到第一个参数作为runner来执行
 func Exec(ctx context.Context, command, runner, workDir string) ([]byte, error) {
 	args, err := SplitCommand(command)
 	if err != nil {
@@ -20,7 +20,6 @@ func Exec(ctx context.Context, command, runner, workDir string) ([]byte, error) 
 	var exe string
 	var params []string
 
-	//如果有runner
 	if runner != "" {
 		exe = runner
 		params = args[0:]

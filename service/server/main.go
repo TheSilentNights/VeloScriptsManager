@@ -29,8 +29,9 @@ func main() {
 	}
 
 	scriptRepo := storage.CreateScriptRepo(db)
+	environmentRepo := storage.CreateEnvironmentRepo(db)
 
-	service := services.NewService(scriptRepo)
+	service := services.NewService(scriptRepo, environmentRepo)
 
 	router := NewRouter(service)
 

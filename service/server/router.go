@@ -22,6 +22,9 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	api.GET("/getTaskLists", router.getStoredScripts)
 	api.POST("/addScript", router.AddScript)
 	api.POST("/deleteScript", router.DeleteScript)
+	api.GET("/getEnvironments", router.getStoredEnvironments)
+	api.POST("/addEnvironment", router.AddEnvironment)
+	api.POST("/deleteEnvironment", router.DeleteEnvironment)
 	api.POST("/stop", router.stopServer)
 
 }
@@ -78,6 +81,72 @@ func (router *Router) DeleteScript(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"message": "script deleted",
+	})
+}
+
+func (router *Router) getStoredEnvironments(c *gin.Context) {
+	list, err := router.service.ListEnvironments()
+	if err != nil {
+		c.JSON(400, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(200, list)
+}
+
+func (router *Router) AddEnvironment(c *gin.Context) {
+	req := &models.AddEnvironmentRequest{}
+
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(400, gin.H{
+			"error": "arguments are not valid",
+		})
+		return
+	}
+
+	err := router.service.AddEnvironment(req)
+
+	if err != nil {
+		c.JSON(400, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "environment added",
+	})
+}
+
+func (router *Router) DeleteEnvironment(c *gin.Context) {
+	req := &models.DeleteEnvironmentRequest{}
+
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(400, gin.H{
+			"error": "arguments are not valid",
+		})
+		return
+	}
+
+	if req.ID == "" {
+		c.JSON(400, gin.H{
+			"error": "id is required",
+		})
+		return
+	}
+
+	err := router.service.DeleteEnvironment(req.ID)
+
+	if err != nil {
+		c.JSON(400, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "environment deleted",
 	})
 }
 
