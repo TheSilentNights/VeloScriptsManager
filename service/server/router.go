@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/services"
 
@@ -26,7 +27,6 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	api.POST("/addEnvironment", router.AddEnvironment)
 	api.POST("/deleteEnvironment", router.DeleteEnvironment)
 	api.POST("/stop", router.stopServer)
-
 }
 
 func (router *Router) getStatus(c *gin.Context) {
@@ -42,40 +42,49 @@ func (router *Router) stopServer(c *gin.Context) {
 	})
 }
 
+// writeError 将服务层返回的业务错误（与 gin 解耦）写入响应
+func writeError(c *gin.Context, apiErr *models.ApiError) {
+	c.JSON(apiErr.Status, apiErr)
+}
+
 func (router *Router) getStoredScripts(c *gin.Context) {
-	list, err := router.service.ListScripts()
-	if err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+	list, apiErr := router.service.ListScripts()
+	if apiErr != nil {
+		writeError(c, apiErr)
 		return
 	}
 	c.JSON(200, list)
+}
+
+func (router *Router) AddScript(c *gin.Context) {
+	req := &models.AddScriptRequest{}
+
+	if err := c.ShouldBind(&req); err != nil {
+		writeError(c, ierrors.InvalidArgument)
+		return
+	}
+
+	if apiErr := router.service.AddScript(req); apiErr != nil {
+		writeError(c, apiErr)
+		return
+	}
 }
 
 func (router *Router) DeleteScript(c *gin.Context) {
 	req := &models.DeleteScriptRequest{}
 
 	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(400, gin.H{
-			"error": "arguments are not valid",
-		})
+		writeError(c, ierrors.InvalidArgument)
 		return
 	}
 
 	if req.ID == "" {
-		c.JSON(400, gin.H{
-			"error": "id is required",
-		})
+		writeError(c, ierrors.IdRequired)
 		return
 	}
 
-	err := router.service.DeleteScript(req.ID)
-
-	if err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+	if apiErr := router.service.DeleteScript(req.ID); apiErr != nil {
+		writeError(c, apiErr)
 		return
 	}
 
@@ -85,11 +94,9 @@ func (router *Router) DeleteScript(c *gin.Context) {
 }
 
 func (router *Router) getStoredEnvironments(c *gin.Context) {
-	list, err := router.service.ListEnvironments()
-	if err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+	list, apiErr := router.service.ListEnvironments()
+	if apiErr != nil {
+		writeError(c, apiErr)
 		return
 	}
 	c.JSON(200, list)
@@ -99,18 +106,12 @@ func (router *Router) AddEnvironment(c *gin.Context) {
 	req := &models.AddEnvironmentRequest{}
 
 	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(400, gin.H{
-			"error": "arguments are not valid",
-		})
+		writeError(c, ierrors.InvalidArgument)
 		return
 	}
 
-	err := router.service.AddEnvironment(req)
-
-	if err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+	if apiErr := router.service.AddEnvironment(req); apiErr != nil {
+		writeError(c, apiErr)
 		return
 	}
 
@@ -123,49 +124,21 @@ func (router *Router) DeleteEnvironment(c *gin.Context) {
 	req := &models.DeleteEnvironmentRequest{}
 
 	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(400, gin.H{
-			"error": "arguments are not valid",
-		})
+		writeError(c, ierrors.InvalidArgument)
 		return
 	}
 
 	if req.ID == "" {
-		c.JSON(400, gin.H{
-			"error": "id is required",
-		})
+		writeError(c, ierrors.IdRequired)
 		return
 	}
 
-	err := router.service.DeleteEnvironment(req.ID)
-
-	if err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+	if apiErr := router.service.DeleteEnvironment(req.ID); apiErr != nil {
+		writeError(c, apiErr)
 		return
 	}
 
 	c.JSON(200, gin.H{
 		"message": "environment deleted",
 	})
-}
-
-func (router *Router) AddScript(c *gin.Context) {
-	req := &models.AddScriptRequest{}
-
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(400, gin.H{
-			"error": "arguments are not valid",
-		})
-		return
-	}
-
-	err := router.service.AddScript(req)
-
-	if err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
 }
