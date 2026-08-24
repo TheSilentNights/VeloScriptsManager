@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"log"
 
 	"modernc.org/sqlite"
 )
@@ -15,16 +16,27 @@ func OpenOrCreate(dbPath string) (*sql.DB, error) {
 
 	db := sql.OpenDB(connector)
 
+	errDbPing := db.Ping()
+
+	if errDbPing != nil {
+		shutdownDb(db)
+		return nil, fmt.Errorf("ping sqlite: %w", errDbPing)
+	}
+
 	db.SetMaxOpenConns(1) // sqlite 单文件，单连接足够，避免并发写冲突
 
 	if err := migrate(db); err != nil {
-		err := db.Close()
-		if err != nil {
-			return nil, err
-		}
+		shutdownDb(db)
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	return db, nil
+}
+
+func shutdownDb(db *sql.DB) {
+	err := db.Close()
+	if err != nil {
+		log.Printf("close db: %v", err)
+	}
 }
 
 func migrate(db *sql.DB) error {

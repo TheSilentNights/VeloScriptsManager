@@ -16,8 +16,8 @@ func (e *ApiError) Error() string {
 }
 
 // NewApiError 根据状态码与消息构造业务错误，data 默认留空（nil）
-func NewApiError(code int, message string) *ApiError {
-	return &ApiError{Code: code, Message: message}
+func NewApiError(code int, message string, data any) *ApiError {
+	return &ApiError{Code: code, Message: message, Data: data}
 }
 
 // Result 表示成功响应，采用统一的 {code, message, data} 信封格式；

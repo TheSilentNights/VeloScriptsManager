@@ -1,7 +1,6 @@
 package services
 
 import (
-	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
@@ -10,7 +9,7 @@ import (
 func (service *Service) ListEnvironments() (*models.Result, *models.ApiError) {
 	list, err := service.environmentRepo.List()
 	if err != nil {
-		return nil, ierrors.DbError
+		return nil, models.NewApiError(500, "list environments fail", err.Error())
 	}
 	return models.NewResult(list), nil
 }
@@ -24,7 +23,7 @@ func (service *Service) AddEnvironment(req *models.AddEnvironmentRequest) (*mode
 	}
 
 	if err := service.environmentRepo.Upsert(environment); err != nil {
-		return nil, ierrors.DbError
+		return nil, models.NewApiError(500, "add environment fail", err.Error())
 	}
 
 	return models.NewResultWithMessage("environment added", nil), nil
@@ -32,7 +31,7 @@ func (service *Service) AddEnvironment(req *models.AddEnvironmentRequest) (*mode
 
 func (service *Service) DeleteEnvironment(id string) (*models.Result, *models.ApiError) {
 	if err := service.environmentRepo.Delete(id); err != nil {
-		return nil, ierrors.DbError
+		return nil, models.NewApiError(500, "delete environment fail", err.Error())
 	}
 	return models.NewResultWithMessage("environment deleted", nil), nil
 }

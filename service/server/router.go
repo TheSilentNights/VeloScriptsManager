@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
+	"fmt"
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/services"
 
@@ -65,7 +65,7 @@ func (router *Router) AddScript(c *gin.Context) {
 	req := &models.AddScriptRequest{}
 
 	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, ierrors.InvalidArgument)
+		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
 		return
 	}
 
@@ -81,12 +81,12 @@ func (router *Router) DeleteScript(c *gin.Context) {
 	req := &models.DeleteScriptRequest{}
 
 	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, ierrors.InvalidArgument)
+		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
 		return
 	}
 
 	if req.ID == "" {
-		writeError(c, ierrors.IdRequired)
+		writeError(c, models.NewApiError(400, "invalid arguments", fmt.Sprintf("id cannot be empty")))
 		return
 	}
 
@@ -111,7 +111,7 @@ func (router *Router) AddEnvironment(c *gin.Context) {
 	req := &models.AddEnvironmentRequest{}
 
 	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, ierrors.InvalidArgument)
+		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
 		return
 	}
 
@@ -127,12 +127,12 @@ func (router *Router) DeleteEnvironment(c *gin.Context) {
 	req := &models.DeleteEnvironmentRequest{}
 
 	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, ierrors.InvalidArgument)
+		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
 		return
 	}
 
 	if req.ID == "" {
-		writeError(c, ierrors.IdRequired)
+		writeError(c, models.NewApiError(400, "invalid arguments", fmt.Sprintf("id cannot be empty")))
 		return
 	}
 
