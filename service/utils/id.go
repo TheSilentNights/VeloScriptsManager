@@ -9,3 +9,7 @@ func GenerateScriptId() string {
 func GenerateEnvironmentId() string {
 	return uuid.NewString()
 }
+
+func GenerateExecutionId() string {
+	return uuid.NewString()
+}

@@ -16,3 +16,7 @@ type AddEnvironmentRequest struct {
 type DeleteRequest struct {
 	Id string `form:"id" json:"id"`
 }
+
+type ExecuteScriptRequest struct {
+	Id string `form:"id" json:"id"`
+}

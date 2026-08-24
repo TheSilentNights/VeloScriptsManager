@@ -8,6 +8,7 @@ import (
 type Service struct {
 	scriptRepo      *storage.ScriptRepo
 	environmentRepo *storage.EnvironmentRepo
+	executions      *executionManager
 
 	shutdownSignalChan chan struct{}
 	shutdownOnce       sync.Once
@@ -17,7 +18,13 @@ func NewService(
 	scriptRepo *storage.ScriptRepo,
 	environmentRepo *storage.EnvironmentRepo,
 ) *Service {
-	return &Service{scriptRepo, environmentRepo, make(chan struct{}), sync.Once{}}
+	return &Service{
+		scriptRepo:         scriptRepo,
+		environmentRepo:    environmentRepo,
+		executions:         newExecutionManager(),
+		shutdownSignalChan: make(chan struct{}),
+		shutdownOnce:       sync.Once{},
+	}
 }
 
 func (service *Service) GetShutdownSignalChan() chan struct{} {
