@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/services"
 
 	"github.com/gin-gonic/gin"
@@ -16,8 +17,10 @@ func NewRouter(service *services.Service) *Router {
 
 func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	engine.GET("/status", router.getStatus)
+
 	api := engine.Group("/api/v1/")
 	api.GET("/getTaskLists", router.service.ListScripts)
+	api.POST("/addScript", router.AddScript)
 	api.POST("/stop", router.stopServer)
 
 }
@@ -35,6 +38,23 @@ func (router *Router) stopServer(c *gin.Context) {
 func (router *Router) getStoredScripts(c *gin.Context) {
 	router.service.ListScripts(c)
 }
-func getRunningTaskList(c *gin.Context) {
 
+func (router *Router) AddScript(c *gin.Context) {
+	req := &models.AddScriptRequest{}
+
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(400, gin.H{
+			"error": "arguments are not valid",
+		})
+		return
+	}
+
+	err := router.service.AddScript(req)
+
+	if err != nil {
+		c.JSON(400, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 }

@@ -52,4 +52,10 @@ func main() {
 	if err != nil {
 		println(err.Error())
 	}
+
+	errDbClose := db.Close()
+	if errDbClose != nil {
+		//todo: fix the db error
+		return
+	}
 }
