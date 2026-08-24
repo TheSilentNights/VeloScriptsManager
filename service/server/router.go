@@ -42,18 +42,23 @@ func (router *Router) stopServer(c *gin.Context) {
 	})
 }
 
-// writeError 将服务层返回的业务错误（与 gin 解耦）写入响应
+// writeResult 将服务层返回的成功结果封装为 HTTP 响应（与 gin 解耦）
+func writeResult(c *gin.Context, result *models.Result) {
+	c.JSON(result.Code, result)
+}
+
+// writeError 将服务层返回的业务错误封装为 HTTP 响应（与 gin 解耦）
 func writeError(c *gin.Context, apiErr *models.ApiError) {
-	c.JSON(apiErr.Status, apiErr)
+	c.JSON(apiErr.Code, apiErr)
 }
 
 func (router *Router) getStoredScripts(c *gin.Context) {
-	list, apiErr := router.service.ListScripts()
+	result, apiErr := router.service.ListScripts()
 	if apiErr != nil {
 		writeError(c, apiErr)
 		return
 	}
-	c.JSON(200, list)
+	writeResult(c, result)
 }
 
 func (router *Router) AddScript(c *gin.Context) {
@@ -64,10 +69,12 @@ func (router *Router) AddScript(c *gin.Context) {
 		return
 	}
 
-	if apiErr := router.service.AddScript(req); apiErr != nil {
+	result, apiErr := router.service.AddScript(req)
+	if apiErr != nil {
 		writeError(c, apiErr)
 		return
 	}
+	writeResult(c, result)
 }
 
 func (router *Router) DeleteScript(c *gin.Context) {
@@ -83,23 +90,21 @@ func (router *Router) DeleteScript(c *gin.Context) {
 		return
 	}
 
-	if apiErr := router.service.DeleteScript(req.ID); apiErr != nil {
-		writeError(c, apiErr)
-		return
-	}
-
-	c.JSON(200, gin.H{
-		"message": "script deleted",
-	})
-}
-
-func (router *Router) getStoredEnvironments(c *gin.Context) {
-	list, apiErr := router.service.ListEnvironments()
+	result, apiErr := router.service.DeleteScript(req.ID)
 	if apiErr != nil {
 		writeError(c, apiErr)
 		return
 	}
-	c.JSON(200, list)
+	writeResult(c, result)
+}
+
+func (router *Router) getStoredEnvironments(c *gin.Context) {
+	result, apiErr := router.service.ListEnvironments()
+	if apiErr != nil {
+		writeError(c, apiErr)
+		return
+	}
+	writeResult(c, result)
 }
 
 func (router *Router) AddEnvironment(c *gin.Context) {
@@ -110,14 +115,12 @@ func (router *Router) AddEnvironment(c *gin.Context) {
 		return
 	}
 
-	if apiErr := router.service.AddEnvironment(req); apiErr != nil {
+	result, apiErr := router.service.AddEnvironment(req)
+	if apiErr != nil {
 		writeError(c, apiErr)
 		return
 	}
-
-	c.JSON(200, gin.H{
-		"message": "environment added",
-	})
+	writeResult(c, result)
 }
 
 func (router *Router) DeleteEnvironment(c *gin.Context) {
@@ -133,12 +136,10 @@ func (router *Router) DeleteEnvironment(c *gin.Context) {
 		return
 	}
 
-	if apiErr := router.service.DeleteEnvironment(req.ID); apiErr != nil {
+	result, apiErr := router.service.DeleteEnvironment(req.ID)
+	if apiErr != nil {
 		writeError(c, apiErr)
 		return
 	}
-
-	c.JSON(200, gin.H{
-		"message": "environment deleted",
-	})
+	writeResult(c, result)
 }

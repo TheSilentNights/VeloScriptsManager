@@ -7,15 +7,15 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
 )
 
-func (service *Service) ListEnvironments() ([]storage.Environment, *models.ApiError) {
+func (service *Service) ListEnvironments() (*models.Result, *models.ApiError) {
 	list, err := service.environmentRepo.List()
 	if err != nil {
 		return nil, ierrors.DbError
 	}
-	return list, nil
+	return models.NewResult(list), nil
 }
 
-func (service *Service) AddEnvironment(req *models.AddEnvironmentRequest) *models.ApiError {
+func (service *Service) AddEnvironment(req *models.AddEnvironmentRequest) (*models.Result, *models.ApiError) {
 	environment := storage.Environment{
 		ID:   utils.GenerateEnvironmentId(),
 		Name: req.Name,
@@ -24,15 +24,15 @@ func (service *Service) AddEnvironment(req *models.AddEnvironmentRequest) *model
 	}
 
 	if err := service.environmentRepo.Upsert(environment); err != nil {
-		return ierrors.DbError
+		return nil, ierrors.DbError
 	}
 
-	return nil
+	return models.NewResultWithMessage("environment added", nil), nil
 }
 
-func (service *Service) DeleteEnvironment(id string) *models.ApiError {
+func (service *Service) DeleteEnvironment(id string) (*models.Result, *models.ApiError) {
 	if err := service.environmentRepo.Delete(id); err != nil {
-		return ierrors.DbError
+		return nil, ierrors.DbError
 	}
-	return nil
+	return models.NewResultWithMessage("environment deleted", nil), nil
 }

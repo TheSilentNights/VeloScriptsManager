@@ -7,15 +7,15 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
 )
 
-func (service *Service) ListScripts() ([]storage.Script, *models.ApiError) {
+func (service *Service) ListScripts() (*models.Result, *models.ApiError) {
 	list, err := service.scriptRepo.List()
 	if err != nil {
 		return nil, ierrors.DbError
 	}
-	return list, nil
+	return models.NewResult(list), nil
 }
 
-func (service *Service) AddScript(req *models.AddScriptRequest) *models.ApiError {
+func (service *Service) AddScript(req *models.AddScriptRequest) (*models.Result, *models.ApiError) {
 
 	script := storage.Script{
 		ID:      utils.GenerateScriptId(),
@@ -26,15 +26,15 @@ func (service *Service) AddScript(req *models.AddScriptRequest) *models.ApiError
 	}
 
 	if err := service.scriptRepo.Upsert(script); err != nil {
-		return ierrors.DbError
+		return nil, ierrors.DbError
 	}
 
-	return nil
+	return models.NewResultWithMessage("script added", nil), nil
 }
 
-func (service *Service) DeleteScript(id string) *models.ApiError {
+func (service *Service) DeleteScript(id string) (*models.Result, *models.ApiError) {
 	if err := service.scriptRepo.Delete(id); err != nil {
-		return ierrors.DbError
+		return nil, ierrors.DbError
 	}
-	return nil
+	return models.NewResultWithMessage("script deleted", nil), nil
 }
