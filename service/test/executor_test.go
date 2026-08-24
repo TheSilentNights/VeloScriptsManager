@@ -45,7 +45,7 @@ func TestSplitCommand(t *testing.T) {
 }
 
 func TestExecEmptyCommand(t *testing.T) {
-	_, err := executor.Exec(context.Background(), "   ", "", ".")
+	_, err := executor.Exec(context.Background(), "", nil, ".")
 	if err == nil {
 		t.Fatal("expected error for empty command")
 	}
@@ -58,7 +58,7 @@ func TestExecEmptyCommand(t *testing.T) {
 }
 
 func TestExecCommand(t *testing.T) {
-	_, err := executor.Exec(context.Background(), "/c C:\\develop\\test_env\\neoforge26.1.2\\run.bat", "cmd.exe", "C:\\develop\\test_env\\neoforge26.1.2")
+	_, err := executor.Exec(context.Background(), "cmd.exe", []string{"/c", "C:\\develop\\test_env\\neoforge26.1.2\\run.bat"}, "C:\\develop\\test_env\\neoforge26.1.2")
 	if err != nil {
 		println(err.Error())
 	}

@@ -8,27 +8,23 @@ import (
 )
 
 // Exec 注意，这里的exec会自动根据runner判断从哪里截取可执行。如果没有预设的runner会从params里找到第一个参数作为runner来执行
-func Exec(ctx context.Context, command, runner, workDir string) ([]byte, error) {
-	args, err := SplitCommand(command)
-	if err != nil {
-		return nil, err
-	}
-	if len(args) == 0 {
+func Exec(ctx context.Context, runner string, params []string, workDir string) ([]byte, error) {
+	if len(params) == 0 {
 		return nil, errors.New("empty command")
 	}
 
 	var exe string
-	var params []string
+	var args []string
 
 	if runner != "" {
 		exe = runner
-		params = args[0:]
+		args = params
 	} else {
-		exe = args[0]
-		params = args[1:]
+		exe = params[0]
+		args = params[1:]
 	}
 
-	cmd := exec.CommandContext(ctx, exe, params...)
+	cmd := exec.CommandContext(ctx, exe, args...)
 
 	if workDir != "" {
 		cmd.Dir = workDir

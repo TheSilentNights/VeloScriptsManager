@@ -10,7 +10,7 @@ const environmentCreateTableSql = `CREATE TABLE IF NOT EXISTS environments (
 const scriptsCreateTableSql = `CREATE TABLE IF NOT EXISTS scripts (
 			id               TEXT PRIMARY KEY,
 			name             TEXT NOT NULL,
-			command          TEXT NOT NULL,
 			work_dir         TEXT NOT NULL DEFAULT '',
-			runner           TEXT NOT NULL DEFAULT ''
+			runner           TEXT NOT NULL DEFAULT '',
+			params           TEXT NOT NULL DEFAULT '[]'
 )`

@@ -19,9 +19,9 @@ func (service *Service) AddScript(req *models.AddScriptRequest) (*models.Result,
 	script := storage.Script{
 		ID:      utils.GenerateScriptId(),
 		Name:    req.Name,
-		Command: req.Command,
 		WorkDir: req.WorkDir,
 		Runner:  req.Runner,
+		Params:  req.Params,
 	}
 
 	if err := service.scriptRepo.Upsert(script); err != nil {

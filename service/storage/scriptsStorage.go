@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 
 	squirrel "github.com/Masterminds/squirrel"
 )
@@ -16,7 +17,7 @@ func CreateScriptRepo(db *sql.DB) *ScriptRepo {
 
 func (sr *ScriptRepo) List() ([]Script, error) {
 	query, args, err := squirrel.
-		Select("id", "name", "command", "work_dir", "runner").
+		Select("id", "name", "work_dir", "runner", "params").
 		From("scripts").
 		OrderBy("name").
 		ToSql()
@@ -41,7 +42,11 @@ func (sr *ScriptRepo) List() ([]Script, error) {
 	var out []Script
 	for rows.Next() {
 		var s Script
-		if err := rows.Scan(&s.ID, &s.Name, &s.Command, &s.WorkDir, &s.Runner); err != nil {
+		var params string
+		if err := rows.Scan(&s.ID, &s.Name, &s.WorkDir, &s.Runner, &params); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal([]byte(params), &s.Params); err != nil {
 			return nil, err
 		}
 		out = append(out, s)
@@ -52,7 +57,7 @@ func (sr *ScriptRepo) List() ([]Script, error) {
 
 func (sr *ScriptRepo) Get(id string) (*Script, error) {
 	query, args, err := squirrel.
-		Select("id", "name", "command", "work_dir", "runner").
+		Select("id", "name", "work_dir", "runner", "params").
 		From("scripts").
 		Where(squirrel.Eq{"id": id}).
 		ToSql()
@@ -63,7 +68,11 @@ func (sr *ScriptRepo) Get(id string) (*Script, error) {
 	row := sr.db.QueryRow(query, args...)
 
 	var s Script
-	if err := row.Scan(&s.ID, &s.Name, &s.Command, &s.WorkDir, &s.Runner); err != nil {
+	var params string
+	if err := row.Scan(&s.ID, &s.Name, &s.WorkDir, &s.Runner, &params); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(params), &s.Params); err != nil {
 		return nil, err
 	}
 
@@ -71,11 +80,16 @@ func (sr *ScriptRepo) Get(id string) (*Script, error) {
 }
 
 func (sr *ScriptRepo) Upsert(s Script) error {
+	params, err := json.Marshal(s.Params)
+	if err != nil {
+		return err
+	}
+
 	query, args, err := squirrel.
 		Insert("scripts").
-		Columns("id", "name", "command", "work_dir", "runner").
-		Values(s.ID, s.Name, s.Command, s.WorkDir, s.Runner).
-		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, command=excluded.command, work_dir=excluded.work_dir, runner=excluded.runner").
+		Columns("id", "name", "work_dir", "runner", "params").
+		Values(s.ID, s.Name, s.WorkDir, s.Runner, string(params)).
+		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, work_dir=excluded.work_dir, runner=excluded.runner, params=excluded.params").
 		ToSql()
 	if err != nil {
 		return err
