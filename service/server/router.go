@@ -42,12 +42,10 @@ func (router *Router) stopServer(c *gin.Context) {
 	})
 }
 
-// writeResult 将服务层返回的成功结果封装为 HTTP 响应（与 gin 解耦）
 func writeResult(c *gin.Context, result *models.Result) {
 	c.JSON(result.Code, result)
 }
 
-// writeError 将服务层返回的业务错误封装为 HTTP 响应（与 gin 解耦）
 func writeError(c *gin.Context, apiErr *models.ApiError) {
 	c.JSON(apiErr.Code, apiErr)
 }
@@ -78,24 +76,7 @@ func (router *Router) AddScript(c *gin.Context) {
 }
 
 func (router *Router) DeleteScript(c *gin.Context) {
-	req := &models.DeleteScriptRequest{}
-
-	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
-		return
-	}
-
-	if req.ID == "" {
-		writeError(c, models.NewApiError(400, "invalid arguments", fmt.Sprintf("id cannot be empty")))
-		return
-	}
-
-	result, apiErr := router.service.DeleteScript(req.ID)
-	if apiErr != nil {
-		writeError(c, apiErr)
-		return
-	}
-	writeResult(c, result)
+	router.handleDelete(c, router.service.DeleteScript)
 }
 
 func (router *Router) getStoredEnvironments(c *gin.Context) {
@@ -124,19 +105,23 @@ func (router *Router) AddEnvironment(c *gin.Context) {
 }
 
 func (router *Router) DeleteEnvironment(c *gin.Context) {
-	req := &models.DeleteEnvironmentRequest{}
+	router.handleDelete(c, router.service.DeleteEnvironment)
+}
+
+func (router *Router) handleDelete(c *gin.Context, deleteFn func(id string) (*models.Result, *models.ApiError)) {
+	var req models.DeleteRequest
 
 	if err := c.ShouldBind(&req); err != nil {
 		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
 		return
 	}
 
-	if req.ID == "" {
+	if req.Id == "" {
 		writeError(c, models.NewApiError(400, "invalid arguments", fmt.Sprintf("id cannot be empty")))
 		return
 	}
 
-	result, apiErr := router.service.DeleteEnvironment(req.ID)
+	result, apiErr := deleteFn(req.Id)
 	if apiErr != nil {
 		writeError(c, apiErr)
 		return
