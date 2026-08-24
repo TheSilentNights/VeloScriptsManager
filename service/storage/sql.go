@@ -13,5 +13,6 @@ const scriptsCreateTableSql =
 			id               TEXT PRIMARY KEY,
 			name             TEXT NOT NULL,
 			command          TEXT NOT NULL,
-			work_dir         TEXT NOT NULL DEFAULT ''
+			work_dir         TEXT NOT NULL DEFAULT '',
+			runner           TEXT NOT NULL DEFAULT ''
 )`

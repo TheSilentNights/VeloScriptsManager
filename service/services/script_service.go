@@ -19,6 +19,7 @@ func (service *Service) AddScript(req *models.AddScriptRequest) error {
 		Name:    req.Name,
 		Command: req.Command,
 		WorkDir: req.WorkDir,
+		Runner:  req.Runner,
 	}
 
 	if err := service.scriptRepo.Upsert(script); err != nil {

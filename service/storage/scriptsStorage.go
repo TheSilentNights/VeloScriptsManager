@@ -16,7 +16,7 @@ func CreateScriptRepo(db *sql.DB) *ScriptRepo {
 
 func (sr *ScriptRepo) List() ([]Script, error) {
 	query, args, err := squirrel.
-		Select("id", "name", "command", "work_dir").
+		Select("id", "name", "command", "work_dir", "runner").
 		From("scripts").
 		OrderBy("name").
 		ToSql()
@@ -41,7 +41,7 @@ func (sr *ScriptRepo) List() ([]Script, error) {
 	var out []Script
 	for rows.Next() {
 		var s Script
-		if err := rows.Scan(&s.ID, &s.Name, &s.Command, &s.WorkDir); err != nil {
+		if err := rows.Scan(&s.ID, &s.Name, &s.Command, &s.WorkDir, &s.Runner); err != nil {
 			return nil, err
 		}
 		out = append(out, s)
@@ -52,7 +52,7 @@ func (sr *ScriptRepo) List() ([]Script, error) {
 
 func (sr *ScriptRepo) Get(id string) (*Script, error) {
 	query, args, err := squirrel.
-		Select("id", "name", "command", "work_dir").
+		Select("id", "name", "command", "work_dir", "runner").
 		From("scripts").
 		Where(squirrel.Eq{"id": id}).
 		ToSql()
@@ -63,7 +63,7 @@ func (sr *ScriptRepo) Get(id string) (*Script, error) {
 	row := sr.db.QueryRow(query, args...)
 
 	var s Script
-	if err := row.Scan(&s.ID, &s.Name, &s.Command, &s.WorkDir); err != nil {
+	if err := row.Scan(&s.ID, &s.Name, &s.Command, &s.WorkDir, &s.Runner); err != nil {
 		return nil, err
 	}
 
@@ -73,9 +73,9 @@ func (sr *ScriptRepo) Get(id string) (*Script, error) {
 func (sr *ScriptRepo) Upsert(s Script) error {
 	query, args, err := squirrel.
 		Insert("scripts").
-		Columns("id", "name", "command", "work_dir").
-		Values(s.ID, s.Name, s.Command, s.WorkDir).
-		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, command=excluded.command, work_dir=excluded.work_dir").
+		Columns("id", "name", "command", "work_dir", "runner").
+		Values(s.ID, s.Name, s.Command, s.WorkDir, s.Runner).
+		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, command=excluded.command, work_dir=excluded.work_dir, runner=excluded.runner").
 		ToSql()
 	if err != nil {
 		return err

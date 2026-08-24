@@ -3,8 +3,6 @@ package storage
 import (
 	"database/sql"
 	"fmt"
-
-	_ "modernc.org/sqlite"
 )
 
 func OpenOrCreate(dbPath string) (*sql.DB, error) {
@@ -12,11 +10,12 @@ func OpenOrCreate(dbPath string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
-	db.SetMaxOpenConns(1)
+	db.SetMaxOpenConns(1) // sqlite 单文件，单连接足够，避免并发写冲突
 
 	if err := migrate(db); err != nil {
-		if closeErr := db.Close(); closeErr != nil {
-			return nil, fmt.Errorf("migrate: %w (additional error closing db: %v)", err, closeErr)
+		err := db.Close()
+		if err != nil {
+			return nil, err
 		}
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
