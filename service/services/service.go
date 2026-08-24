@@ -3,8 +3,6 @@ package services
 import (
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
 	"sync"
-
-	"github.com/gin-gonic/gin"
 )
 
 type Service struct {
@@ -21,11 +19,7 @@ func (service *Service) GetShutdownSignalChan() chan struct{} {
 	return service.shutdownSignalChan
 }
 
-func (service *Service) StopServer(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "server is stopping",
-	})
-
+func (service *Service) StopServer() {
 	service.shutdownOnce.Do(func() {
 		close(service.GetShutdownSignalChan())
 	})

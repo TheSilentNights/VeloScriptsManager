@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	err := configs.InitConfig("../temp/config.json")
+	err := configs.InitConfig("./temp/config.json")
 
 	if err != nil {
 		println(err.Error())
@@ -22,7 +22,11 @@ func main() {
 
 	r := gin.Default()
 
-	db, err := storage.Open("../temp/test_repo.db")
+	db, err := storage.OpenOrCreate("./temp/test_repo.db")
+	if err != nil {
+		println("failed to open database: " + err.Error())
+		return
+	}
 
 	scriptRepo := storage.CreateScriptRepo(db)
 

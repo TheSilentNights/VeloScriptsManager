@@ -5,3 +5,7 @@ type AddScriptRequest struct {
 	Command string `form:"command"`
 	WorkDir string `form:"workdir"`
 }
+
+type DeleteScriptRequest struct {
+	ID string `form:"id" json:"id"`
+}

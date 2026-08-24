@@ -5,7 +5,7 @@ const environmentCreateTableSql =
 			id        TEXT PRIMARY KEY,
 			name      TEXT NOT NULL,
 			type      TEXT NOT NULL,
-			bin_path  TEXT NOT NULL DEFAULT '',
+			bin_path  TEXT NOT NULL DEFAULT ''
 )`
 
 const scriptsCreateTableSql =
@@ -13,5 +13,5 @@ const scriptsCreateTableSql =
 			id               TEXT PRIMARY KEY,
 			name             TEXT NOT NULL,
 			command          TEXT NOT NULL,
-			work_dir         TEXT NOT NULL DEFAULT '',
+			work_dir         TEXT NOT NULL DEFAULT ''
 )`

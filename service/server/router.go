@@ -19,8 +19,9 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	engine.GET("/status", router.getStatus)
 
 	api := engine.Group("/api/v1/")
-	api.GET("/getTaskLists", router.service.ListScripts)
+	api.GET("/getTaskLists", router.getStoredScripts)
 	api.POST("/addScript", router.AddScript)
+	api.POST("/deleteScript", router.DeleteScript)
 	api.POST("/stop", router.stopServer)
 
 }
@@ -32,11 +33,52 @@ func (router *Router) getStatus(c *gin.Context) {
 }
 
 func (router *Router) stopServer(c *gin.Context) {
-	router.service.StopServer(c)
+	router.service.StopServer()
+	c.JSON(200, gin.H{
+		"message": "server is stopping",
+	})
 }
 
 func (router *Router) getStoredScripts(c *gin.Context) {
-	router.service.ListScripts(c)
+	list, err := router.service.ListScripts()
+	if err != nil {
+		c.JSON(400, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(200, list)
+}
+
+func (router *Router) DeleteScript(c *gin.Context) {
+	req := &models.DeleteScriptRequest{}
+
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(400, gin.H{
+			"error": "arguments are not valid",
+		})
+		return
+	}
+
+	if req.ID == "" {
+		c.JSON(400, gin.H{
+			"error": "id is required",
+		})
+		return
+	}
+
+	err := router.service.DeleteScript(req.ID)
+
+	if err != nil {
+		c.JSON(400, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "script deleted",
+	})
 }
 
 func (router *Router) AddScript(c *gin.Context) {

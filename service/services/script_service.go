@@ -6,18 +6,10 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
-
-	"github.com/gin-gonic/gin"
 )
 
-func (service *Service) ListScripts(c *gin.Context) {
-	list, err := service.scriptRepo.List()
-
-	if err != nil {
-		c.Errors.JSON()
-	}
-
-	c.JSON(200, list)
+func (service *Service) ListScripts() ([]storage.Script, error) {
+	return service.scriptRepo.List()
 }
 
 func (service *Service) AddScript(req *models.AddScriptRequest) error {
@@ -33,5 +25,12 @@ func (service *Service) AddScript(req *models.AddScriptRequest) error {
 		return errors.New(ierrors.DbError)
 	}
 
+	return nil
+}
+
+func (service *Service) DeleteScript(id string) error {
+	if err := service.scriptRepo.Delete(id); err != nil {
+		return errors.New(ierrors.DbError)
+	}
 	return nil
 }
