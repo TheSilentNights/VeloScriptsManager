@@ -3,13 +3,18 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+
+	"modernc.org/sqlite"
 )
 
 func OpenOrCreate(dbPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", dbPath)
+	connector, err := sqlite.NewConnector(fmt.Sprintf("file:%s", dbPath))
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
+
+	db := sql.OpenDB(connector)
+
 	db.SetMaxOpenConns(1) // sqlite 单文件，单连接足够，避免并发写冲突
 
 	if err := migrate(db); err != nil {
