@@ -57,6 +57,7 @@ func Start(ctx context.Context, runner string, params []string, workDir string) 
 		cmd.Dir = workDir
 	}
 
+	//init pipe
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
@@ -189,6 +190,7 @@ func (p *Process) broadcast(chunk []byte) {
 	p.chunks = append(p.chunks, chunk)
 	p.totalBytes += len(chunk)
 	for len(p.chunks) > 0 && p.totalBytes > maxBufferedOutput {
+		//remove the earliest chunk
 		p.totalBytes -= len(p.chunks[0])
 		p.chunks = p.chunks[1:]
 	}
