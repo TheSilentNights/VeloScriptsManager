@@ -30,11 +30,12 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 
 	api := engine.Group("/api/v1/")
 	api.GET("/getStoredScripts", router.getStoredScripts)
+	api.GET("/execute/attach", router.attachExecution)
+	api.GET("/getEnvironments", router.getStoredEnvironments)
+
 	api.POST("/addScript", router.AddScript)
 	api.POST("/deleteScript", router.DeleteScript)
 	api.POST("/executeScript", router.ExecuteScript)
-	api.GET("/execute/attach", router.attachExecution)
-	api.GET("/getEnvironments", router.getStoredEnvironments)
 	api.POST("/addEnvironment", router.AddEnvironment)
 	api.POST("/deleteEnvironment", router.DeleteEnvironment)
 	api.POST("/stop", router.stopServer)
