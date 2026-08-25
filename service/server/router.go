@@ -29,7 +29,7 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	engine.GET("/status", router.getStatus)
 
 	api := engine.Group("/api/v1/")
-	api.GET("/getTaskLists", router.getStoredScripts)
+	api.GET("/getStoredScripts", router.getStoredScripts)
 	api.POST("/addScript", router.AddScript)
 	api.POST("/deleteScript", router.DeleteScript)
 	api.POST("/executeScript", router.ExecuteScript)
