@@ -49,5 +49,53 @@ func migrate(db *sql.DB) error {
 			return err
 		}
 	}
+
+	columns := []struct{ table, column, definition string }{
+		{"scripts", "environments", "TEXT NOT NULL DEFAULT '[]'"},
+		{"environments", "env", "TEXT NOT NULL DEFAULT '[]'"},
+		{"environments", "children", "TEXT NOT NULL DEFAULT '[]'"},
+	}
+	for _, c := range columns {
+		if err := addColumnIfMissing(db, c.table, c.column, c.definition); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// addColumnIfMissing adds a column to a table when it does not already exist.
+// Needed because CREATE TABLE IF NOT EXISTS never modifies an existing table.
+func addColumnIfMissing(db *sql.DB, table, column, definition string) error {
+	rows, err := db.Query("SELECT name FROM pragma_table_info(?)", table)
+	if err != nil {
+		return err
+	}
+
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(rows)
+
+	exists := false
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return err
+		}
+		if name == column {
+			exists = true
+			break
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !exists {
+		_, err = db.Exec("ALTER table " + table + " ADD COLUMN " + column + " " + definition)
+		return err
+	}
 	return nil
 }

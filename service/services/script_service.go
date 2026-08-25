@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sort"
 	"time"
 
 	"github/TheSilentNights/VeloScriptsManager/service/executor"
@@ -23,11 +24,12 @@ func (service *Service) ListScripts() (*models.Result, *models.ApiError) {
 func (service *Service) AddScript(req *models.AddScriptRequest) (*models.Result, *models.ApiError) {
 
 	script := storage.Script{
-		ID:      utils.GenerateScriptId(),
-		Name:    req.Name,
-		WorkDir: req.WorkDir,
-		Runner:  req.Runner,
-		Params:  req.Params,
+		ID:           utils.GenerateScriptId(),
+		Name:         req.Name,
+		WorkDir:      req.WorkDir,
+		Runner:       req.Runner,
+		Params:       req.Params,
+		Environments: req.Environments,
 	}
 
 	if err := service.scriptRepo.Upsert(script); err != nil {
@@ -57,9 +59,16 @@ func (service *Service) StartExecution(id string) (*Execution, *models.ApiError)
 		return nil, models.NewApiError(500, "get script fail", err.Error())
 	}
 
+	// Resolve the environment variables from the script's referenced
+	// environments (and their children) before starting the process.
+	env, apiErr := service.resolveEnvironmentVars(script.Environments)
+	if apiErr != nil {
+		return nil, apiErr
+	}
+
 	// context.Background keeps the process running to completion even if the
 	// HTTP client that started it disconnects.
-	process, err := executor.Start(context.Background(), script.Runner, script.Params, script.WorkDir)
+	process, err := executor.Start(context.Background(), script.Runner, script.Params, script.WorkDir, env)
 	if err != nil {
 		return nil, models.NewApiError(500, "start script fail", err.Error())
 	}
@@ -96,4 +105,70 @@ func (service *Service) GetExecution(id string) (*Execution, *models.ApiError) {
 		return nil, models.NewApiError(404, "execution not found", nil)
 	}
 	return execution, nil
+}
+
+// resolveEnvironmentVars walks the given environment ids (recursively following
+// each environment's children) and returns the flattened "KEY=VALUE" list.
+//
+// Precedence is "last write wins": children (inherited/base environments) are
+// applied first, then the environment's own key-values override them; later ids
+// in the input list override earlier ones. A cycle among children references is
+// reported as an error rather than looping forever.
+func (service *Service) resolveEnvironmentVars(ids []string) ([]string, *models.ApiError) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	values := make(map[string]string)
+	visited := make(map[string]bool)
+	stack := make(map[string]bool)
+
+	var visit func(id string) *models.ApiError
+	visit = func(id string) *models.ApiError {
+		if stack[id] {
+			return models.NewApiError(500, "environment cycle detected", id)
+		}
+		if visited[id] {
+			return nil
+		}
+		stack[id] = true
+		defer delete(stack, id)
+
+		environment, err := service.environmentRepo.Get(id)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return models.NewApiError(404, "environment not found", id)
+			}
+			return models.NewApiError(500, "get environment fail", err.Error())
+		}
+		visited[id] = true
+
+		for _, child := range environment.Children {
+			if apiErr := visit(child); apiErr != nil {
+				return apiErr
+			}
+		}
+		for _, item := range environment.Env {
+			values[item.Key] = item.Value
+		}
+		return nil
+	}
+
+	for _, id := range ids {
+		if apiErr := visit(id); apiErr != nil {
+			return nil, apiErr
+		}
+	}
+
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	env := make([]string, 0, len(keys))
+	for _, key := range keys {
+		env = append(env, key+"="+values[key])
+	}
+	return env, nil
 }

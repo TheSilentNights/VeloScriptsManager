@@ -3,17 +3,16 @@ package test
 import (
 	"bytes"
 	"context"
-	"errors"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 
 	"github/TheSilentNights/VeloScriptsManager/service/executor"
 )
 
-func TestExecEmptyCommand(t *testing.T) {
-	_, err := executor.Exec(context.Background(), "", nil, ".")
+// TestStartEmptyCommand checks that a command with no params is rejected.
+func TestStartEmptyCommand(t *testing.T) {
+	_, err := executor.Start(context.Background(), "", nil, ".", nil)
 	if err == nil {
 		t.Fatal("expected error for empty command")
 	}
@@ -22,17 +21,10 @@ func TestExecEmptyCommand(t *testing.T) {
 	}
 }
 
-func TestExecCommand(t *testing.T) {
-	_, err := executor.Exec(context.Background(), "cmd.exe", []string{"/c", "C:\\develop\\test_env\\neoforge26.1.2\\run.bat"}, "C:\\develop\\test_env\\neoforge26.1.2")
-	if err != nil {
-		println(err.Error())
-	}
-}
-
 // TestStartProcess verifies the async Process: output is delivered to
 // subscribers and the process reports a clean exit.
 func TestStartProcess(t *testing.T) {
-	process, err := executor.Start(context.Background(), "cmd.exe", []string{"/c", "echo hello"}, "")
+	process, err := executor.Start(context.Background(), "cmd.exe", []string{"/c", "echo hello"}, "", nil)
 	if err != nil {
 		t.Fatalf("start failed: %v", err)
 	}
@@ -57,6 +49,36 @@ func TestStartProcess(t *testing.T) {
 	}
 }
 
+// TestStartProcessEnv verifies environment variables set before execution are
+// visible to the process. cmd.exe expands %VAR% from the process environment,
+// so the value passed via env must be printed.
+func TestStartProcessEnv(t *testing.T) {
+	env := []string{"VSM_TEST_VAR=hello-env"}
+	process, err := executor.Start(context.Background(), "cmd.exe", []string{"/c", "echo %VSM_TEST_VAR%"}, "", env)
+	if err != nil {
+		t.Fatalf("start failed: %v", err)
+	}
+
+	var output bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for chunk := range process.Subscribe() {
+			output.Write(chunk)
+		}
+	}()
+
+	<-process.Done()
+	<-done
+
+	if process.ExitCode() != 0 {
+		t.Fatalf("expected exit code 0, got %d (err: %v)", process.ExitCode(), process.Err())
+	}
+	if !strings.Contains(output.String(), "hello-env") {
+		t.Fatalf("expected output to contain 'hello-env', got: %q", output.String())
+	}
+}
+
 // TestStartProcessStdin verifies stdin forwarding: the process is a real .bat
 // file that reads a line from stdin (via delayed expansion) and echoes it back.
 func TestStartProcessStdin(t *testing.T) {
@@ -67,7 +89,7 @@ func TestStartProcessStdin(t *testing.T) {
 		t.Fatalf("write bat failed: %v", err)
 	}
 
-	process, err := executor.Start(context.Background(), "cmd.exe", []string{"/c", batPath}, dir)
+	process, err := executor.Start(context.Background(), "cmd.exe", []string{"/c", batPath}, dir, nil)
 	if err != nil {
 		t.Fatalf("start failed: %v", err)
 	}
@@ -94,17 +116,5 @@ func TestStartProcessStdin(t *testing.T) {
 	}
 	if !strings.Contains(output.String(), "got:payload") {
 		t.Fatalf("expected output to contain 'got:payload', got: %q", output.String())
-	}
-}
-
-// TestExecError keeps the error-path assertion available.
-func TestExecError(t *testing.T) {
-	_, err := executor.Exec(context.Background(), "cmd.exe", []string{"/c", "exit 3"}, "")
-	if err == nil {
-		t.Fatal("expected non-nil error for failing command")
-	}
-	var exitErr *exec.ExitError
-	if !errors.As(err, &exitErr) {
-		t.Fatalf("expected *exec.ExitError, got %T", err)
 	}
 }

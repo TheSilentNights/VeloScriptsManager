@@ -16,10 +16,12 @@ func (service *Service) ListEnvironments() (*models.Result, *models.ApiError) {
 
 func (service *Service) AddEnvironment(req *models.AddEnvironmentRequest) (*models.Result, *models.ApiError) {
 	environment := storage.Environment{
-		ID:   utils.GenerateEnvironmentId(),
-		Name: req.Name,
-		Type: req.Type,
-		Path: req.Path,
+		ID:       utils.GenerateEnvironmentId(),
+		Name:     req.Name,
+		Type:     req.Type,
+		Path:     req.Path,
+		Env:      req.Env,
+		Children: req.Children,
 	}
 
 	if err := service.environmentRepo.Upsert(environment); err != nil {

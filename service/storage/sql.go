@@ -4,7 +4,9 @@ const environmentCreateTableSql = `CREATE TABLE IF NOT EXISTS environments (
 			id        TEXT PRIMARY KEY,
 			name      TEXT NOT NULL,
 			type      TEXT NOT NULL,
-			path  TEXT NOT NULL DEFAULT ''
+			path      TEXT NOT NULL DEFAULT '',
+			env       TEXT NOT NULL DEFAULT '[]',
+			children  TEXT NOT NULL DEFAULT '[]'
 )`
 
 const scriptsCreateTableSql = `CREATE TABLE IF NOT EXISTS scripts (
@@ -12,5 +14,6 @@ const scriptsCreateTableSql = `CREATE TABLE IF NOT EXISTS scripts (
 			name             TEXT NOT NULL,
 			work_dir         TEXT NOT NULL DEFAULT '',
 			runner           TEXT NOT NULL DEFAULT '',
-			params           TEXT NOT NULL DEFAULT '[]'
+			params           TEXT NOT NULL DEFAULT '[]',
+			environments     TEXT NOT NULL DEFAULT '[]'
 )`

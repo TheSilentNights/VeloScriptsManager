@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -39,9 +40,11 @@ type Process struct {
 // Start launches the command described by runner+params inside workDir without
 // blocking and returns a Process handle for interacting with it.
 //
-// The runner/params resolution follows Exec: when runner is empty the first
-// param is treated as the executable and the rest as its arguments.
-func Start(ctx context.Context, runner string, params []string, workDir string) (*Process, error) {
+// env carries extra "KEY=VALUE" pairs that are merged on top of the parent
+// process environment (entries with a duplicate key replace the inherited
+// value). The runner/params resolution follows Exec: when runner is empty the
+// first param is treated as the executable and the rest as its arguments.
+func Start(ctx context.Context, runner string, params []string, workDir string, env []string) (*Process, error) {
 	if len(params) == 0 {
 		return nil, errors.New("empty command")
 	}
@@ -55,6 +58,9 @@ func Start(ctx context.Context, runner string, params []string, workDir string) 
 	cmd := exec.CommandContext(ctx, exe, args...)
 	if workDir != "" {
 		cmd.Dir = workDir
+	}
+	if len(env) > 0 {
+		cmd.Env = append(os.Environ(), env...)
 	}
 
 	//init pipe
@@ -211,9 +217,13 @@ func (p *Process) wait(wg *sync.WaitGroup) {
 
 	p.mu.Lock()
 	p.exitErr = err
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		p.exitCode = exitErr.ExitCode()
+	if err == nil {
+		p.exitCode = 0
+	} else {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			p.exitCode = exitErr.ExitCode()
+		}
 	}
 	p.closed = true
 	subs := p.subs
