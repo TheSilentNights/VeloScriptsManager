@@ -86,7 +86,7 @@ func (service *Service) GetExecution(id string) (*models.Execution, *models.ApiE
 	return execution, nil
 }
 
-// resolveEnvironmentVars 展平所有的链式依赖。并且遵循父依赖覆盖子依赖的相同时规则
+// resolveEnvironmentVars 展平所有的链式依赖，列表后续的 env 可以覆盖前面的同名变量。
 func (service *Service) resolveEnvironmentVars(ids []string) ([]string, *models.ApiError) {
 	if len(ids) == 0 {
 		return nil, nil

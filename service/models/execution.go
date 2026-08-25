@@ -67,5 +67,6 @@ func (e *Execution) Finish(exitCode int, runErr error) {
 	} else {
 		e.status = "finished"
 	}
+	// 抛弃 process 句柄，让 GC 回收其输出缓冲，防止内存膨胀。
 	e.process = nil
 }

@@ -103,13 +103,11 @@ func (p *Process) Subscribe() <-chan []byte {
 		return ch
 	}
 
-
 	//切出最新的512行
 	start := 0
 	if len(p.chunks) > subscriberBufferSize {
 		start = len(p.chunks) - subscriberBufferSize
 	}
-
 
 	for _, chunk := range p.chunks[start:] {
 		select {

@@ -1,4 +1,4 @@
-package test
+package services
 
 import (
 	"path/filepath"
@@ -48,6 +48,24 @@ func TestResolveEnvironmentVars(t *testing.T) {
 	}
 	if got["K2"] != "v2" {
 		t.Fatalf("expected K2=v2 from inherited base env, got %q", got["K2"])
+	}
+}
+
+// TestResolveEnvironmentVarsLaterWins checks that a top-level environment listed
+// later overrides an earlier one, even when it is the child of a preceding env.
+func TestResolveEnvironmentVarsLaterWins(t *testing.T) {
+	service := newTestService(t)
+
+	_ = service.environmentRepo.Upsert(storage.Environment{ID: "C", Name: "C", Env: []storage.EnvVar{{Key: "K", Value: "child"}}})
+	_ = service.environmentRepo.Upsert(storage.Environment{ID: "P", Name: "P", Env: []storage.EnvVar{{Key: "K", Value: "parent"}}, Children: []string{"C"}})
+
+	env, apiErr := service.resolveEnvironmentVars([]string{"P", "C"})
+	if apiErr != nil {
+		t.Fatalf("unexpected error: %v", apiErr)
+	}
+
+	if got := envAsMap(env); got["K"] != "child" {
+		t.Fatalf("expected K=child (later-listed child overrides parent), got %q", got["K"])
 	}
 }
 
