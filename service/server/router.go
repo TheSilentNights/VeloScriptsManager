@@ -154,8 +154,17 @@ func (router *Router) attachExecution(c *gin.Context) {
 	router.streamExecution(conn, execution)
 }
 
-func (router *Router) streamExecution(conn *websocket.Conn, execution *services.Execution) {
-	process := execution.Process
+func (router *Router) streamExecution(conn *websocket.Conn, execution *models.Execution) {
+	process := execution.Process()
+	if process == nil {
+		_ = conn.WriteJSON(models.WsServerFrame{
+			Type:  "exit",
+			Code:  execution.ExitCode(),
+			Error: execution.Error(),
+		})
+		_ = conn.Close()
+		return
+	}
 
 	stop := make(chan struct{})
 	writerDone := make(chan struct{})

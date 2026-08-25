@@ -51,7 +51,11 @@ func migrate(db *sql.DB) error {
 	}
 
 	columns := []struct{ table, column, definition string }{
+		{"scripts", "work_dir", "TEXT NOT NULL DEFAULT ''"},
+		{"scripts", "runner", "TEXT NOT NULL DEFAULT ''"},
+		{"scripts", "params", "TEXT NOT NULL DEFAULT '[]'"},
 		{"scripts", "environments", "TEXT NOT NULL DEFAULT '[]'"},
+		{"environments", "path", "TEXT NOT NULL DEFAULT ''"},
 		{"environments", "env", "TEXT NOT NULL DEFAULT '[]'"},
 		{"environments", "children", "TEXT NOT NULL DEFAULT '[]'"},
 	}

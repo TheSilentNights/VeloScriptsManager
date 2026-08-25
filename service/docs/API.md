@@ -1,4 +1,6 @@
-# VeloScriptsManager Service API 文档
+
+## 注意！！！
+    这个api文档由ai生成。我暂时没精力手写。仅供参考。以实际代码为准
 
 ## 通用约定
 

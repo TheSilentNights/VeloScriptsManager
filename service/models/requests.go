@@ -3,19 +3,19 @@ package models
 import "github/TheSilentNights/VeloScriptsManager/service/storage"
 
 type AddScriptRequest struct {
-	Name         string   `form:"name"`
-	WorkDir      string   `form:"workdir"`
-	Runner       string   `form:"runner"`
+	Name         string   `form:"name" json:"name"`
+	WorkDir      string   `form:"workdir" json:"workdir"`
+	Runner       string   `form:"runner" json:"runner"`
 	Params       []string `form:"params" json:"params"`
-	Environments []string `json:"environments"` // environment ids to apply
+	Environments []string `form:"environments" json:"environments"` // environment ids to apply
 }
 
 type AddEnvironmentRequest struct {
-	Name     string           `form:"name"`
-	Type     string           `form:"type"`
-	Path     string           `form:"path"`
-	Env      []storage.EnvVar `json:"env"`
-	Children []string         `json:"children"`
+	Name     string           `form:"name" json:"name"`
+	Type     string           `form:"type" json:"type"`
+	Path     string           `form:"path" json:"path"`
+	Env      []storage.EnvVar `form:"env" json:"env" `
+	Children []string         `form:"children" json:"children"`
 }
 
 type DeleteRequest struct {

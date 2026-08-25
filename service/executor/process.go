@@ -26,6 +26,7 @@ type Process struct {
 	cmd   *exec.Cmd
 	stdin io.WriteCloser
 
+	stdinMu    sync.Mutex
 	mu         sync.Mutex
 	chunks     [][]byte
 	totalBytes int
@@ -37,13 +38,7 @@ type Process struct {
 	exitCode int
 }
 
-// Start launches the command described by runner+params inside workDir without
-// blocking and returns a Process handle for interacting with it.
-//
-// env carries extra "KEY=VALUE" pairs that are merged on top of the parent
-// process environment (entries with a duplicate key replace the inherited
-// value). The runner/params resolution follows Exec: when runner is empty the
-// first param is treated as the executable and the rest as its arguments.
+// Start launches the command
 func Start(ctx context.Context, runner string, params []string, workDir string, env []string) (*Process, error) {
 	if len(params) == 0 {
 		return nil, errors.New("empty command")
@@ -97,10 +92,7 @@ func Start(ctx context.Context, runner string, params []string, workDir string, 
 	return p, nil
 }
 
-// Subscribe registers a new output consumer. Every output chunk produced so
-// far is replayed first (in order), followed by live chunks. The returned
-// channel is closed once the process has exited. Replay happens while holding
-// the internal lock, so no chunk can be missed or duplicated.
+// Subscribe registers a new output consumer.
 func (p *Process) Subscribe() <-chan []byte {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -111,7 +103,15 @@ func (p *Process) Subscribe() <-chan []byte {
 		return ch
 	}
 
-	for _, chunk := range p.chunks {
+
+	//切出最新的512行
+	start := 0
+	if len(p.chunks) > subscriberBufferSize {
+		start = len(p.chunks) - subscriberBufferSize
+	}
+
+
+	for _, chunk := range p.chunks[start:] {
 		select {
 		case ch <- chunk:
 		default:
@@ -126,11 +126,15 @@ func (p *Process) Subscribe() <-chan []byte {
 
 // WriteStdin writes data into the process stdin.
 func (p *Process) WriteStdin(data []byte) (int, error) {
+	p.stdinMu.Lock()
+	defer p.stdinMu.Unlock()
 	return p.stdin.Write(data)
 }
 
 // CloseStdin closes the process stdin, letting a reader detect EOF.
 func (p *Process) CloseStdin() error {
+	p.stdinMu.Lock()
+	defer p.stdinMu.Unlock()
 	return p.stdin.Close()
 }
 
@@ -185,6 +189,7 @@ func (p *Process) pump(r io.Reader, wg *sync.WaitGroup) {
 	}
 }
 
+// broadcast 如你所见，这里有最大chunks长度的判断。理论而言。只要你不执行过多的脚本。内存不会膨胀过多的
 func (p *Process) broadcast(chunk []byte) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
