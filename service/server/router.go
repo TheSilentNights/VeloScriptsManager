@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"sync"
 
 	"github/TheSilentNights/VeloScriptsManager/service/models"
@@ -12,9 +13,19 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var trustedHost = []string{
+	"localhost",
+	"127.0.0.1",
+}
 var wsUpgrader = websocket.Upgrader{
 	// The management UI is served from a different origin; accept all.
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		if slices.Contains(trustedHost, r.Host) {
+			return true
+		}
+
+		return false
+	},
 }
 
 type Router struct {
