@@ -59,7 +59,7 @@ func main() {
 
 	// Close attached execution WebSockets first; Shutdown waits for active
 	// connections and would otherwise hang on long-lived streams.
-	router.CloseWebSockets()
+	router.service.CloseWebSockets()
 
 	ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
 	defer cancel()

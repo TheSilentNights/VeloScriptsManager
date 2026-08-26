@@ -1,7 +1,8 @@
-package main
+package services
 
 import (
 	"encoding/base64"
+	"sync"
 	"time"
 
 	"github/TheSilentNights/VeloScriptsManager/service/models"
@@ -15,22 +16,27 @@ const (
 	wsPingPeriod = (wsPongWait * 9) / 10
 )
 
-// streamExecution bridges an upgraded WebSocket to the stdio of the given
+type WsStore struct {
+	wsMu    sync.Mutex
+	wsConns map[*websocket.Conn]struct{}
+}
+
+// StreamExecution streamExecution bridges an upgraded WebSocket to the stdio of the given
 // execution: server frames carry base64 output chunks plus a final exit frame,
 // client frames forward stdin/close/kill to the process.
 //
 // The connection is registered so CloseWebSockets can force-close it during
 // shutdown, and it is always closed on return. The server pings every
 // wsPingPeriod; a client that misses wsPongWait without pong is disconnected.
-func (router *Router) streamExecution(conn *websocket.Conn, execution *models.Execution) {
-	router.wsMu.Lock()
-	router.wsConns[conn] = struct{}{}
-	router.wsMu.Unlock()
+func (service *Service) StreamExecution(conn *websocket.Conn, execution *models.Execution) {
+	service.wsService.wsMu.Lock()
+	service.wsService.wsConns[conn] = struct{}{}
+	service.wsService.wsMu.Unlock()
 
 	defer func() {
-		router.wsMu.Lock()
-		delete(router.wsConns, conn)
-		router.wsMu.Unlock()
+		service.wsService.wsMu.Lock()
+		delete(service.wsService.wsConns, conn)
+		service.wsService.wsMu.Unlock()
 		_ = conn.Close()
 	}()
 
@@ -112,6 +118,16 @@ func (router *Router) streamExecution(conn *websocket.Conn, execution *models.Ex
 
 	close(stop)
 	<-writerDone
+}
+
+// CloseWebSockets force-closes every attached execution WebSocket so a graceful
+// shutdown is not blocked by long-lived connections.
+func (service *Service) CloseWebSockets() {
+	service.wsService.wsMu.Lock()
+	defer service.wsService.wsMu.Unlock()
+	for conn := range service.wsService.wsConns {
+		_ = conn.Close()
+	}
 }
 
 func errorString(err error) string {

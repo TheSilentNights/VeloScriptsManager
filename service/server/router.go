@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	"net/http"
-	"slices"
-	"sync"
-
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/services"
+	"net/http"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -30,25 +28,11 @@ var wsUpgrader = websocket.Upgrader{
 
 type Router struct {
 	service *services.Service
-
-	wsMu    sync.Mutex
-	wsConns map[*websocket.Conn]struct{}
 }
 
 func NewRouter(service *services.Service) *Router {
 	return &Router{
 		service: service,
-		wsConns: make(map[*websocket.Conn]struct{}),
-	}
-}
-
-// CloseWebSockets force-closes every attached execution WebSocket so a graceful
-// shutdown is not blocked by long-lived connections.
-func (router *Router) CloseWebSockets() {
-	router.wsMu.Lock()
-	defer router.wsMu.Unlock()
-	for conn := range router.wsConns {
-		_ = conn.Close()
 	}
 }
 
@@ -184,7 +168,7 @@ func (router *Router) attachExecution(c *gin.Context) {
 		return
 	}
 
-	router.streamExecution(conn, execution)
+	router.service.StreamExecution(conn, execution)
 }
 
 func (router *Router) getStoredEnvironments(c *gin.Context) {

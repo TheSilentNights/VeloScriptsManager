@@ -3,12 +3,15 @@ package services
 import (
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 type Service struct {
 	scriptRepo      *storage.ScriptRepo
 	environmentRepo *storage.EnvironmentRepo
 	executions      *executionManager
+	wsService       *WsStore
 
 	shutdownSignalChan chan struct{}
 	shutdownOnce       sync.Once
@@ -24,6 +27,7 @@ func NewService(
 		executions:         newExecutionManager(),
 		shutdownSignalChan: make(chan struct{}),
 		shutdownOnce:       sync.Once{},
+		wsService:          &WsStore{wsConns: make(map[*websocket.Conn]struct{})},
 	}
 }
 
