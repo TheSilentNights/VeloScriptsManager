@@ -1,14 +1,13 @@
-package test
+package configs
 
 import (
-	"github/TheSilentNights/VeloScriptsManager/service/configs"
 	"testing"
 )
 
 const testConfigPath = "../temp/config.json"
 
 func TestConfig(t *testing.T) {
-	config := &configs.Config{}
+	config := &Config{}
 
 	err := config.LoadOrCreate(testConfigPath)
 
@@ -18,7 +17,7 @@ func TestConfig(t *testing.T) {
 }
 
 func TestWrite(t *testing.T) {
-	config := &configs.Config{}
+	config := &Config{}
 
 	config.FontSize = 12
 
