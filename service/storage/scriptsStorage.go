@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 
 	squirrel "github.com/Masterminds/squirrel"
 )
@@ -32,14 +33,12 @@ func (sr *ScriptRepo) List() ([]Script, error) {
 	}
 
 	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			//TODO: fix the error
-			panic(err)
+		if err := rows.Close(); err != nil {
+			log.Printf("close rows: %v", err)
 		}
 	}(rows)
 
-	var out []Script
+	var out = make([]Script, 0)
 	for rows.Next() {
 		var s Script
 		var params string
@@ -121,7 +120,18 @@ func (sr *ScriptRepo) Delete(id string) error {
 		return err
 	}
 
-	_, err = sr.db.Exec(query, args...)
+	result, err := sr.db.Exec(query, args...)
+	if err != nil {
+		return err
+	}
 
-	return err
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
 }

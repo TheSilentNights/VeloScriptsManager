@@ -70,3 +70,15 @@ func (e *Execution) Finish(exitCode int, runErr error) {
 	// 抛弃 process 句柄，让 GC 回收其输出缓冲，防止内存膨胀。
 	e.process = nil
 }
+
+// ExecutionStatusInfo is the API projection of a tracked execution returned by
+// the executions listing endpoint.
+type ExecutionStatusInfo struct {
+	ExecutionId string    `json:"executionId"`
+	ScriptId    string    `json:"scriptId"`
+	Name        string    `json:"name"`
+	StartedAt   time.Time `json:"startedAt"`
+	Status      string    `json:"status"`   // running | finished | failed
+	ExitCode    int       `json:"exitCode"` // -1 while still running
+	Error       string    `json:"error"`
+}

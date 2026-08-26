@@ -15,17 +15,28 @@ var (
 	globalConfig *Config
 	configPath   string
 	configMu     sync.RWMutex
-	configOnce   sync.Once
+	initialized  bool
 )
 
+// InitConfig loads (or creates) the config file. A failed attempt is not
+// sticky: the next call retries instead of silently reporting success.
 func InitConfig(path string) error {
-	var initErr error
-	configOnce.Do(func() {
-		configPath = path
-		globalConfig = &Config{}
-		initErr = globalConfig.LoadOrCreate(path)
-	})
-	return initErr
+	configMu.Lock()
+	defer configMu.Unlock()
+
+	if initialized {
+		return nil
+	}
+
+	cfg := &Config{}
+	if err := cfg.LoadOrCreate(path); err != nil {
+		return err
+	}
+
+	globalConfig = cfg
+	configPath = path
+	initialized = true
+	return nil
 }
 
 func GetConfig() Config {

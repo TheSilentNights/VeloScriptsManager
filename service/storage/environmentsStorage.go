@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 
 	squirrel "github.com/Masterminds/squirrel"
 )
@@ -31,14 +32,12 @@ func (er *EnvironmentRepo) List() ([]Environment, error) {
 	}
 
 	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			//TODO: fix the error
-			panic(err)
+		if err := rows.Close(); err != nil {
+			log.Printf("close rows: %v", err)
 		}
 	}(rows)
 
-	var out []Environment
+	var out = make([]Environment, 0)
 	for rows.Next() {
 		e, err := scanEnvironment(rows)
 		if err != nil {
@@ -98,9 +97,20 @@ func (er *EnvironmentRepo) Delete(id string) error {
 		return err
 	}
 
-	_, err = er.db.Exec(query, args...)
+	result, err := er.db.Exec(query, args...)
+	if err != nil {
+		return err
+	}
 
-	return err
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
 }
 
 // scanner abstracts *sql.Row and *sql.Rows so a single decode helper works for

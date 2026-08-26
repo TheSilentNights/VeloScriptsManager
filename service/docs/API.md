@@ -243,3 +243,55 @@
 ```
 
 进程结束后服务端发送 `exit` 帧并关闭连接。
+
+### GET /api/v1/getExecutions
+
+获取当前 executionManager 中所有 execution 的状态快照，按启动时间排序。记录在进程结束后保留（句柄已释放，占用很小），直到通过 deleteExecution 手动删除。
+
+**响应 `data` 字段**
+
+```json
+[
+  {
+    "executionId": "uuid",
+    "scriptId": "uuid",
+    "name": "build",
+    "startedAt": "2026-08-26T12:00:00Z",
+    "status": "running",
+    "exitCode": -1,
+    "error": ""
+  }
+]
+```
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| executionId | string | 执行 ID |
+| scriptId | string | 脚本 ID |
+| name | string | 脚本名称 |
+| startedAt | time | 启动时间 |
+| status | string | `running` \| `finished` \| `failed` |
+| exitCode | int | 进程退出码；运行中为 -1 |
+| error | string | 运行错误信息；正常结束为空 |
+
+### POST /api/v1/deleteExecution
+
+按 ID 删除一条 execution 记录。若进程仍在运行会先强制终止，再移除记录。
+
+**请求参数**
+
+| 字段 | 类型 | 必填 |
+| --- | --- | --- |
+| id | string | 是（execution ID） |
+
+**响应**
+
+```json
+{ "code": 200, "message": "execution deleted", "data": null }
+```
+
+**错误**
+
+| code | message |
+| --- | --- |
+| 404 | execution not found |

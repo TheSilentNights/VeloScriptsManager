@@ -34,7 +34,7 @@ func TestStartProcess(t *testing.T) {
 	go func() {
 		defer close(done)
 		for chunk := range process.Subscribe() {
-			output.Write(chunk)
+			output.Write(chunk.Data)
 		}
 	}()
 
@@ -64,7 +64,7 @@ func TestStartProcessEnv(t *testing.T) {
 	go func() {
 		defer close(done)
 		for chunk := range process.Subscribe() {
-			output.Write(chunk)
+			output.Write(chunk.Data)
 		}
 	}()
 
@@ -99,7 +99,7 @@ func TestStartProcessStdin(t *testing.T) {
 	go func() {
 		defer close(done)
 		for chunk := range process.Subscribe() {
-			output.Write(chunk)
+			output.Write(chunk.Data)
 		}
 	}()
 

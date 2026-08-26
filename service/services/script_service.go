@@ -40,6 +40,9 @@ func (service *Service) AddScript(req *models.AddScriptRequest) (*models.Result,
 
 func (service *Service) DeleteScript(id string) (*models.Result, *models.ApiError) {
 	if err := service.scriptRepo.Delete(id); err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return nil, models.NewApiError(404, "script not found", id)
+		}
 		return nil, models.NewApiError(500, "delete script fail", err.Error())
 	}
 	return models.NewResultWithMessage("script deleted", nil), nil
@@ -84,6 +87,44 @@ func (service *Service) GetExecution(id string) (*models.Execution, *models.ApiE
 		return nil, models.NewApiError(404, "execution not found", nil)
 	}
 	return execution, nil
+}
+
+// ListExecutions returns an id/status snapshot of every tracked execution,
+// ordered by start time. Records persist after the process exits until they
+// are removed explicitly via DeleteExecution.
+func (service *Service) ListExecutions() (*models.Result, *models.ApiError) {
+	executions := service.executions.list()
+
+	list := make([]models.ExecutionStatusInfo, 0, len(executions))
+	for _, e := range executions {
+		list = append(list, models.ExecutionStatusInfo{
+			ExecutionId: e.ID,
+			ScriptId:    e.ScriptID,
+			Name:        e.Name,
+			StartedAt:   e.StartedAt,
+			Status:      e.Status(),
+			ExitCode:    e.ExitCode(),
+			Error:       e.Error(),
+		})
+	}
+
+	return models.NewResult(list), nil
+}
+
+// DeleteExecution removes a tracked execution record by id. A still-running
+// process is killed first so its handle is never lost mid-flight.
+func (service *Service) DeleteExecution(id string) (*models.Result, *models.ApiError) {
+	execution, ok := service.executions.get(id)
+	if !ok {
+		return nil, models.NewApiError(404, "execution not found", id)
+	}
+
+	if p := execution.Process(); p != nil {
+		_ = p.Kill()
+	}
+
+	service.executions.remove(id)
+	return models.NewResultWithMessage("execution deleted", nil), nil
 }
 
 // resolveEnvironmentVars 展平所有的链式依赖，列表后续的 env 可以覆盖前面的同名变量。

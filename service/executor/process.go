@@ -14,9 +14,26 @@ const (
 	// subscriberBufferSize is the per-subscriber outbound channel buffer.
 	subscriberBufferSize = 512
 
+	// replayHeadroom is the fraction of the subscriber buffer reserved for
+	// live output after a mid-stream attach replays history into it.
+	replayHeadroom = 2 // replay fills at most buffer/replayHeadroom slots
+
 	// maxBufferedOutput caps how much output history a Process keeps in memory.
 	maxBufferedOutput = 10 << 20 // 10 MiB
 )
+
+// Chunk is one unit of process output delivered to subscribers. Dropped > 0
+// signals that Dropped earlier chunks were omitted right before Data because
+// the subscriber fell behind; consumers should surface that gap to clients.
+type Chunk struct {
+	Data    []byte
+	Dropped int
+}
+
+type subscriber struct {
+	ch     chan Chunk
+	missed int
+}
 
 // Process is a running command with exposed stdio pipes. stdout and stderr are
 // merged into a single output stream, in arrival order, which is accumulated
@@ -30,7 +47,7 @@ type Process struct {
 	mu         sync.Mutex
 	chunks     [][]byte
 	totalBytes int
-	subs       []chan []byte
+	subs       []*subscriber
 	closed     bool
 
 	done     chan struct{}
@@ -93,32 +110,33 @@ func Start(ctx context.Context, runner string, params []string, workDir string, 
 }
 
 // Subscribe registers a new output consumer.
-func (p *Process) Subscribe() <-chan []byte {
+func (p *Process) Subscribe() <-chan Chunk {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	ch := make(chan []byte, subscriberBufferSize)
+	ch := make(chan Chunk, subscriberBufferSize)
 	if p.closed {
 		close(ch)
 		return ch
 	}
 
-	//切出最新的512行
+	// Replay at most half of the buffer as history so freshly attached
+	// consumers keep headroom for live output before they start reading.
 	start := 0
-	if len(p.chunks) > subscriberBufferSize {
-		start = len(p.chunks) - subscriberBufferSize
+	history := len(p.chunks)
+	if limit := subscriberBufferSize / replayHeadroom; history > limit {
+		start = history - limit
 	}
 
-	for _, chunk := range p.chunks[start:] {
-		select {
-		case ch <- chunk:
-		default:
-			// History bigger than the channel buffer: drop the oldest replay
-			// chunks rather than blocking the process output pump.
+	for i, chunk := range p.chunks[start:] {
+		item := Chunk{Data: chunk}
+		if i == 0 && start > 0 {
+			item.Dropped = start
 		}
+		ch <- item
 	}
 
-	p.subs = append(p.subs, ch)
+	p.subs = append(p.subs, &subscriber{ch: ch})
 	return ch
 }
 
@@ -138,6 +156,9 @@ func (p *Process) CloseStdin() error {
 
 // Kill force-terminates the process.
 func (p *Process) Kill() error {
+	if p.cmd.Process == nil {
+		return errors.New("process not started")
+	}
 	return p.cmd.Process.Kill()
 }
 
@@ -187,7 +208,9 @@ func (p *Process) pump(r io.Reader, wg *sync.WaitGroup) {
 	}
 }
 
-// broadcast 如你所见，这里有最大chunks长度的判断。理论而言。只要你不执行过多的脚本。内存不会膨胀过多的
+// broadcast appends the chunk to the capped history and fans it out to every
+// subscriber. A subscriber whose buffer is full misses chunks; the next chunk
+// it accepts is preceded by a gap marker carrying how many were skipped.
 func (p *Process) broadcast(chunk []byte) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -204,11 +227,19 @@ func (p *Process) broadcast(chunk []byte) {
 		p.chunks = p.chunks[1:]
 	}
 
-	for _, ch := range p.subs {
+	for _, s := range p.subs {
+		if s.missed > 0 {
+			select {
+			case s.ch <- Chunk{Dropped: s.missed}:
+				s.missed = 0
+			default:
+				// Marker did not fit; keep accumulating until it does.
+			}
+		}
 		select {
-		case ch <- chunk:
+		case s.ch <- Chunk{Data: chunk}:
 		default:
-			// Slow subscriber: drop the chunk for that subscriber only.
+			s.missed++
 		}
 	}
 }
@@ -233,8 +264,8 @@ func (p *Process) wait(wg *sync.WaitGroup) {
 	p.subs = nil
 	p.mu.Unlock()
 
-	for _, ch := range subs {
-		close(ch)
+	for _, s := range subs {
+		close(s.ch)
 	}
 	close(p.done)
 }

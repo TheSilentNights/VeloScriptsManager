@@ -2,11 +2,15 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 
 	"modernc.org/sqlite"
 )
+
+// ErrNotFound reports that a row matching the requested id does not exist.
+var ErrNotFound = errors.New("record not found")
 
 func OpenOrCreate(dbPath string) (*sql.DB, error) {
 	connector, err := sqlite.NewConnector(fmt.Sprintf("file:%s", dbPath))
@@ -76,9 +80,8 @@ func addColumnIfMissing(db *sql.DB, table, column, definition string) error {
 	}
 
 	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			panic(err)
+		if err := rows.Close(); err != nil {
+			log.Printf("close rows: %v", err)
 		}
 	}(rows)
 

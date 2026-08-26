@@ -31,8 +31,11 @@ func (service *Service) GetShutdownSignalChan() chan struct{} {
 	return service.shutdownSignalChan
 }
 
+// StopServer terminates all running script processes and then signals the
+// main goroutine to begin the graceful HTTP shutdown.
 func (service *Service) StopServer() {
 	service.shutdownOnce.Do(func() {
+		service.executions.killRunning()
 		close(service.GetShutdownSignalChan())
 	})
 }

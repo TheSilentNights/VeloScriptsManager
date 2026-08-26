@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
+	"time"
 
 	"github/TheSilentNights/VeloScriptsManager/service/configs"
 	"github/TheSilentNights/VeloScriptsManager/service/services"
@@ -12,11 +14,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func main() {
-	err := configs.InitConfig("./temp/config.json")
+// serverShutdownTimeout bounds the graceful HTTP shutdown so lingering
+// connections cannot block process exit forever.
+const serverShutdownTimeout = 10 * time.Second
 
-	if err != nil {
-		println(err.Error())
+func main() {
+	if err := configs.InitConfig("./temp/config.json"); err != nil {
+		log.Println(err.Error())
 		return
 	}
 
@@ -24,7 +28,7 @@ func main() {
 
 	db, err := storage.OpenOrCreate("./temp/test_repo.db")
 	if err != nil {
-		println("failed to open database: " + err.Error())
+		log.Println("failed to open database: " + err.Error())
 		return
 	}
 
@@ -46,21 +50,24 @@ func main() {
 		err := server.ListenAndServe()
 
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			println(err.Error())
+			log.Println(err.Error())
 		}
 	}()
 
 	//wait for the shutdown Channel to close
 	<-service.GetShutdownSignalChan()
 
-	err = server.Shutdown(context.Background())
-	if err != nil {
-		println(err.Error())
+	// Close attached execution WebSockets first; Shutdown waits for active
+	// connections and would otherwise hang on long-lived streams.
+	router.CloseWebSockets()
+
+	ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		log.Println(err.Error())
 	}
 
-	errDbClose := db.Close()
-	if errDbClose != nil {
-		//todo: fix the db error
-		return
+	if errDbClose := db.Close(); errDbClose != nil {
+		log.Println("close db: " + errDbClose.Error())
 	}
 }

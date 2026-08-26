@@ -4,12 +4,20 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+)
+
+const (
+	wsWriteWait  = 10 * time.Second
+	wsPongWait   = 60 * time.Second
+	wsPingPeriod = (wsPongWait * 9) / 10
 )
 
 var wsUpgrader = websocket.Upgrader{
@@ -19,10 +27,26 @@ var wsUpgrader = websocket.Upgrader{
 
 type Router struct {
 	service *services.Service
+
+	wsMu    sync.Mutex
+	wsConns map[*websocket.Conn]struct{}
 }
 
 func NewRouter(service *services.Service) *Router {
-	return &Router{service: service}
+	return &Router{
+		service: service,
+		wsConns: make(map[*websocket.Conn]struct{}),
+	}
+}
+
+// CloseWebSockets force-closes every attached execution WebSocket so a graceful
+// shutdown is not blocked by long-lived connections.
+func (router *Router) CloseWebSockets() {
+	router.wsMu.Lock()
+	defer router.wsMu.Unlock()
+	for conn := range router.wsConns {
+		_ = conn.Close()
+	}
 }
 
 func (router *Router) RegisterRoutes(engine *gin.Engine) {
@@ -32,12 +56,14 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	api.GET("/getStoredScripts", router.getStoredScripts)
 	api.GET("/execute/attach", router.attachExecution)
 	api.GET("/getEnvironments", router.getStoredEnvironments)
+	api.GET("/getExecutions", router.getExecutions)
 
 	api.POST("/addScript", router.AddScript)
 	api.POST("/deleteScript", router.DeleteScript)
 	api.POST("/executeScript", router.ExecuteScript)
 	api.POST("/addEnvironment", router.AddEnvironment)
 	api.POST("/deleteEnvironment", router.DeleteEnvironment)
+	api.POST("/deleteExecution", router.DeleteExecution)
 	api.POST("/stop", router.stopServer)
 }
 
@@ -125,8 +151,12 @@ func (router *Router) ExecuteScript(c *gin.Context) {
 //
 // Server -> client frames (models.WsServerFrame):
 //
-//	{"type":"output","data":"<base64 chunk>"}
+//	{"type":"output","data":"<base64 chunk>","dropped":0}
 //	{"type":"exit","code":0,"error":""}
+//
+// The server sends ping control frames every wsPingPeriod; clients must reply
+// with pong (gorilla does this automatically). The server closes the socket
+// right after the exit frame.
 //
 // Client -> server frames (models.WsClientFrame):
 //
@@ -155,6 +185,17 @@ func (router *Router) attachExecution(c *gin.Context) {
 }
 
 func (router *Router) streamExecution(conn *websocket.Conn, execution *models.Execution) {
+	router.wsMu.Lock()
+	router.wsConns[conn] = struct{}{}
+	router.wsMu.Unlock()
+
+	defer func() {
+		router.wsMu.Lock()
+		delete(router.wsConns, conn)
+		router.wsMu.Unlock()
+		_ = conn.Close()
+	}()
+
 	process := execution.Process()
 	if process == nil {
 		_ = conn.WriteJSON(models.WsServerFrame{
@@ -162,7 +203,6 @@ func (router *Router) streamExecution(conn *websocket.Conn, execution *models.Ex
 			Code:  execution.ExitCode(),
 			Error: execution.Error(),
 		})
-		_ = conn.Close()
 		return
 	}
 
@@ -173,9 +213,12 @@ func (router *Router) streamExecution(conn *websocket.Conn, execution *models.Ex
 	go func() {
 		defer close(writerDone)
 		ch := process.Subscribe()
+		pingTicker := time.NewTicker(wsPingPeriod)
+		defer pingTicker.Stop()
 		for {
 			select {
 			case chunk, ok := <-ch:
+				_ = conn.SetWriteDeadline(time.Now().Add(wsWriteWait))
 				if !ok {
 					// Process finished: report the exit.
 					_ = conn.WriteJSON(models.WsServerFrame{
@@ -186,9 +229,15 @@ func (router *Router) streamExecution(conn *websocket.Conn, execution *models.Ex
 					return
 				}
 				if err := conn.WriteJSON(models.WsServerFrame{
-					Type: "output",
-					Data: base64.StdEncoding.EncodeToString(chunk),
+					Type:    "output",
+					Data:    base64.StdEncoding.EncodeToString(chunk.Data),
+					Dropped: chunk.Dropped,
 				}); err != nil {
+					return
+				}
+			case <-pingTicker.C:
+				_ = conn.SetWriteDeadline(time.Now().Add(wsWriteWait))
+				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 					return
 				}
 			case <-stop:
@@ -198,6 +247,11 @@ func (router *Router) streamExecution(conn *websocket.Conn, execution *models.Ex
 	}()
 
 	// Reader loop: forward client frames to the process stdio.
+	conn.SetReadDeadline(time.Now().Add(wsPongWait))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(wsPongWait))
+	})
+
 	for {
 		var frame models.WsClientFrame
 		if err := conn.ReadJSON(&frame); err != nil {
@@ -220,7 +274,6 @@ func (router *Router) streamExecution(conn *websocket.Conn, execution *models.Ex
 
 	close(stop)
 	<-writerDone
-	_ = conn.Close()
 }
 
 func errorString(err error) string {
@@ -237,6 +290,20 @@ func (router *Router) getStoredEnvironments(c *gin.Context) {
 		return
 	}
 	writeResult(c, result)
+}
+
+// getExecutions returns the id/status snapshot of all tracked executions.
+func (router *Router) getExecutions(c *gin.Context) {
+	result, apiErr := router.service.ListExecutions()
+	if apiErr != nil {
+		writeError(c, apiErr)
+		return
+	}
+	writeResult(c, result)
+}
+
+func (router *Router) DeleteExecution(c *gin.Context) {
+	router.handleDelete(c, router.service.DeleteExecution)
 }
 
 func (router *Router) AddEnvironment(c *gin.Context) {

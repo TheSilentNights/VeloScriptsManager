@@ -1,6 +1,8 @@
 package services
 
 import (
+	"errors"
+
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
@@ -33,6 +35,9 @@ func (service *Service) AddEnvironment(req *models.AddEnvironmentRequest) (*mode
 
 func (service *Service) DeleteEnvironment(id string) (*models.Result, *models.ApiError) {
 	if err := service.environmentRepo.Delete(id); err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return nil, models.NewApiError(404, "environment not found", id)
+		}
 		return nil, models.NewApiError(500, "delete environment fail", err.Error())
 	}
 	return models.NewResultWithMessage("environment deleted", nil), nil
