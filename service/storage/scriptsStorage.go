@@ -111,6 +111,45 @@ func (sr *ScriptRepo) Upsert(s Script) error {
 	return err
 }
 
+func (sr *ScriptRepo) Update(s Script) error {
+	params, err := json.Marshal(s.Params)
+	if err != nil {
+		return err
+	}
+	environments, err := json.Marshal(s.Environments)
+	if err != nil {
+		return err
+	}
+
+	query, args, err := squirrel.
+		Update("scripts").
+		Set("name", s.Name).
+		Set("work_dir", s.WorkDir).
+		Set("runner", s.Runner).
+		Set("params", string(params)).
+		Set("environments", string(environments)).
+		Where(squirrel.Eq{"id": s.ID}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+
+	result, err := sr.db.Exec(query, args...)
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
 func (sr *ScriptRepo) Delete(id string) error {
 	query, args, err := squirrel.
 		Delete("scripts").

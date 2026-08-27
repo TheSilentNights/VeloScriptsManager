@@ -12,7 +12,21 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
 )
 
-func (service *Service) ListScripts() (*models.Result, *models.ApiError) {
+type ScriptService struct {
+	scriptRepo         *storage.ScriptRepo
+	executions         *ExecutionManager
+	environmentService *EnvironmentService
+}
+
+func NewScriptService(scriptRepo *storage.ScriptRepo, manager *ExecutionManager, environmentService *EnvironmentService) *ScriptService {
+	return &ScriptService{
+		scriptRepo:         scriptRepo,
+		executions:         manager,
+		environmentService: environmentService,
+	}
+}
+
+func (service *ScriptService) ListScripts() (*models.Result, *models.ApiError) {
 	list, err := service.scriptRepo.List()
 	if err != nil {
 		return nil, models.NewApiError(500, "db list error", err)
@@ -20,7 +34,7 @@ func (service *Service) ListScripts() (*models.Result, *models.ApiError) {
 	return models.NewResult(list), nil
 }
 
-func (service *Service) AddScript(req *models.AddScriptRequest) (*models.Result, *models.ApiError) {
+func (service *ScriptService) AddScript(req *models.AddScriptRequest) (*models.Result, *models.ApiError) {
 
 	script := storage.Script{
 		ID:           utils.GenerateScriptId(),
@@ -28,7 +42,7 @@ func (service *Service) AddScript(req *models.AddScriptRequest) (*models.Result,
 		WorkDir:      req.WorkDir,
 		Runner:       req.Runner,
 		Params:       req.Params,
-		Environments: req.Environments,
+		Environments: req.EnvironmentsId,
 	}
 
 	if err := service.scriptRepo.Upsert(script); err != nil {
@@ -38,7 +52,31 @@ func (service *Service) AddScript(req *models.AddScriptRequest) (*models.Result,
 	return models.NewResultWithMessage("script added", nil), nil
 }
 
-func (service *Service) DeleteScript(id string) (*models.Result, *models.ApiError) {
+func (service *ScriptService) UpdateScript(req *models.UpdateScriptRequest) (*models.Result, *models.ApiError) {
+	if req.Id == "" {
+		return nil, models.NewApiError(400, "invalid arguments", "id cannot be empty")
+	}
+
+	script := storage.Script{
+		ID:           req.Id,
+		Name:         req.Name,
+		WorkDir:      req.WorkDir,
+		Runner:       req.Runner,
+		Params:       req.Params,
+		Environments: req.EnvironmentsId,
+	}
+
+	if err := service.scriptRepo.Update(script); err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return nil, models.NewApiError(404, "script not found", req.Id)
+		}
+		return nil, models.NewApiError(500, "update script fail", err.Error())
+	}
+
+	return models.NewResultWithMessage("script updated", nil), nil
+}
+
+func (service *ScriptService) DeleteScript(id string) (*models.Result, *models.ApiError) {
 	if err := service.scriptRepo.Delete(id); err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return nil, models.NewApiError(404, "script not found", id)
@@ -48,9 +86,11 @@ func (service *Service) DeleteScript(id string) (*models.Result, *models.ApiErro
 	return models.NewResultWithMessage("script deleted", nil), nil
 }
 
-// StartExecution 加载脚本并执行。他会提供execution句柄，用作attach
-func (service *Service) StartExecution(id string) (*models.Execution, *models.ApiError) {
-	script, err := service.scriptRepo.Get(id)
+// StartExecution 加载脚本并执行。他会提供execution句柄，用作attach。
+// 执行时允许前端覆盖脚本存储的 Params / Environments：请求体里传了就使用传递的值，
+// 没传则回退到脚本自身存储的配置。
+func (service *ScriptService) StartExecution(req models.ExecuteScriptRequest) (*models.Execution, *models.ApiError) {
+	script, err := service.scriptRepo.Get(req.Id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.NewApiError(404, "script not found", err.Error())
@@ -58,13 +98,23 @@ func (service *Service) StartExecution(id string) (*models.Execution, *models.Ap
 		return nil, models.NewApiError(500, "get script fail", err.Error())
 	}
 
-	env, apiErr := service.resolveEnvironmentVars(script.Environments)
+	// 优先使用前端传递的覆盖参数，否则回退到脚本存储值。
+	params := script.Params
+	if req.Params != nil {
+		params = req.Params
+	}
+	envIDs := script.Environments
+	if req.EnvironmentsId != nil {
+		envIDs = req.EnvironmentsId
+	}
+
+	env, apiErr := service.resolveEnvironmentVars(envIDs)
 	if apiErr != nil {
 		return nil, apiErr
 	}
 
 	//launch background script
-	process, err := executor.Start(context.Background(), script.Runner, script.Params, script.WorkDir, env)
+	process, err := executor.Start(context.Background(), script.Runner, params, script.WorkDir, env)
 	if err != nil {
 		return nil, models.NewApiError(500, "start script fail", err.Error())
 	}
@@ -81,7 +131,7 @@ func (service *Service) StartExecution(id string) (*models.Execution, *models.Ap
 }
 
 // GetExecution returns the tracked execution by id, or a 404 when unknown.
-func (service *Service) GetExecution(id string) (*models.Execution, *models.ApiError) {
+func (service *ScriptService) GetExecution(id string) (*models.Execution, *models.ApiError) {
 	execution, ok := service.executions.get(id)
 	if !ok {
 		return nil, models.NewApiError(404, "execution not found", nil)
@@ -92,7 +142,7 @@ func (service *Service) GetExecution(id string) (*models.Execution, *models.ApiE
 // ListExecutions returns an id/status snapshot of every tracked execution,
 // ordered by start time. Records persist after the process exits until they
 // are removed explicitly via DeleteExecution.
-func (service *Service) ListExecutions() (*models.Result, *models.ApiError) {
+func (service *ScriptService) ListExecutions() (*models.Result, *models.ApiError) {
 	executions := service.executions.list()
 
 	list := make([]models.ExecutionStatusInfo, 0, len(executions))
@@ -113,7 +163,7 @@ func (service *Service) ListExecutions() (*models.Result, *models.ApiError) {
 
 // DeleteExecution removes a tracked execution record by id. A still-running
 // process is killed first so its handle is never lost mid-flight.
-func (service *Service) DeleteExecution(id string) (*models.Result, *models.ApiError) {
+func (service *ScriptService) DeleteExecution(id string) (*models.Result, *models.ApiError) {
 	execution, ok := service.executions.get(id)
 	if !ok {
 		return nil, models.NewApiError(404, "execution not found", id)
@@ -128,7 +178,7 @@ func (service *Service) DeleteExecution(id string) (*models.Result, *models.ApiE
 }
 
 // resolveEnvironmentVars 展平所有的链式依赖，列表后续的 env 可以覆盖前面的同名变量。
-func (service *Service) resolveEnvironmentVars(ids []string) ([]string, *models.ApiError) {
+func (service *ScriptService) resolveEnvironmentVars(ids []string) ([]string, *models.ApiError) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -148,7 +198,7 @@ func (service *Service) resolveEnvironmentVars(ids []string) ([]string, *models.
 		stack[id] = true
 		defer delete(stack, id)
 
-		environment, err := service.environmentRepo.Get(id)
+		environment, err := service.environmentService.getEnvironment(id)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return models.NewApiError(404, "environment not found", id)

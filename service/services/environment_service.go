@@ -8,7 +8,15 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
 )
 
-func (service *Service) ListEnvironments() (*models.Result, *models.ApiError) {
+type EnvironmentService struct {
+	environmentRepo *storage.EnvironmentRepo
+}
+
+func NewEnvironmentService(environmentRepo *storage.EnvironmentRepo) *EnvironmentService {
+	return &EnvironmentService{environmentRepo: environmentRepo}
+}
+
+func (service *EnvironmentService) ListEnvironments() (*models.Result, *models.ApiError) {
 	list, err := service.environmentRepo.List()
 	if err != nil {
 		return nil, models.NewApiError(500, "list environments fail", err.Error())
@@ -16,7 +24,7 @@ func (service *Service) ListEnvironments() (*models.Result, *models.ApiError) {
 	return models.NewResult(list), nil
 }
 
-func (service *Service) AddEnvironment(req *models.AddEnvironmentRequest) (*models.Result, *models.ApiError) {
+func (service *EnvironmentService) AddEnvironment(req *models.AddEnvironmentRequest) (*models.Result, *models.ApiError) {
 	environment := storage.Environment{
 		ID:       utils.GenerateEnvironmentId(),
 		Name:     req.Name,
@@ -33,7 +41,7 @@ func (service *Service) AddEnvironment(req *models.AddEnvironmentRequest) (*mode
 	return models.NewResultWithMessage("environment added", nil), nil
 }
 
-func (service *Service) DeleteEnvironment(id string) (*models.Result, *models.ApiError) {
+func (service *EnvironmentService) DeleteEnvironment(id string) (*models.Result, *models.ApiError) {
 	if err := service.environmentRepo.Delete(id); err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return nil, models.NewApiError(404, "environment not found", id)
@@ -41,4 +49,16 @@ func (service *Service) DeleteEnvironment(id string) (*models.Result, *models.Ap
 		return nil, models.NewApiError(500, "delete environment fail", err.Error())
 	}
 	return models.NewResultWithMessage("environment deleted", nil), nil
+}
+
+func (service *EnvironmentService) getEnvironment(id string) (*storage.Environment, error) {
+	result, err := service.environmentRepo.Get(id)
+
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return nil, err
+		}
+	}
+
+	return result, nil
 }

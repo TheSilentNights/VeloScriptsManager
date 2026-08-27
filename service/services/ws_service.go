@@ -16,27 +16,31 @@ const (
 	wsPingPeriod = (wsPongWait * 9) / 10
 )
 
-type WsStore struct {
+type WsService struct {
 	wsMu    sync.Mutex
 	wsConns map[*websocket.Conn]struct{}
 }
 
+func NewWsService() *WsService {
+	return &WsService{wsConns: make(map[*websocket.Conn]struct{})}
+}
+
 // StreamExecution streamExecution bridges an upgraded WebSocket to the stdio of the given
-// execution: server frames carry base64 output chunks plus a final exit frame,
+// execution: WsService frames carry base64 output chunks plus a final exit frame,
 // client frames forward stdin/close/kill to the process.
 //
 // The connection is registered so CloseWebSockets can force-close it during
-// shutdown, and it is always closed on return. The server pings every
+// shutdown, and it is always closed on return. The WsService pings every
 // wsPingPeriod; a client that misses wsPongWait without pong is disconnected.
-func (service *Service) StreamExecution(conn *websocket.Conn, execution *models.Execution) {
-	service.wsService.wsMu.Lock()
-	service.wsService.wsConns[conn] = struct{}{}
-	service.wsService.wsMu.Unlock()
+func (service *WsService) StreamExecution(conn *websocket.Conn, execution *models.Execution) {
+	service.wsMu.Lock()
+	service.wsConns[conn] = struct{}{}
+	service.wsMu.Unlock()
 
 	defer func() {
-		service.wsService.wsMu.Lock()
-		delete(service.wsService.wsConns, conn)
-		service.wsService.wsMu.Unlock()
+		service.wsMu.Lock()
+		delete(service.wsConns, conn)
+		service.wsMu.Unlock()
 		_ = conn.Close()
 	}()
 
@@ -122,10 +126,10 @@ func (service *Service) StreamExecution(conn *websocket.Conn, execution *models.
 
 // CloseWebSockets force-closes every attached execution WebSocket so a graceful
 // shutdown is not blocked by long-lived connections.
-func (service *Service) CloseWebSockets() {
-	service.wsService.wsMu.Lock()
-	defer service.wsService.wsMu.Unlock()
-	for conn := range service.wsService.wsConns {
+func (service *WsService) CloseWebSockets() {
+	service.wsMu.Lock()
+	defer service.wsMu.Unlock()
+	for conn := range service.wsConns {
 		_ = conn.Close()
 	}
 }

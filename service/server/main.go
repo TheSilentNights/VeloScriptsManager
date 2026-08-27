@@ -34,10 +34,21 @@ func main() {
 
 	scriptRepo := storage.CreateScriptRepo(db)
 	environmentRepo := storage.CreateEnvironmentRepo(db)
+	executionManager := services.NewExecutionManager()
 
-	service := services.NewService(scriptRepo, environmentRepo)
+	serverController := services.NewServerController(
+		executionManager,
+	)
+	environmentService := services.NewEnvironmentService(environmentRepo)
+	scriptService := services.NewScriptService(scriptRepo, executionManager, environmentService)
+	wsService := services.NewWsService()
 
-	router := NewRouter(service)
+	router := NewRouter(
+		scriptService,
+		environmentService,
+		wsService,
+		serverController,
+	)
 
 	router.RegisterRoutes(r)
 
@@ -55,11 +66,11 @@ func main() {
 	}()
 
 	//wait for the shutdown Channel to close
-	<-service.GetShutdownSignalChan()
+	<-serverController.GetShutdownSignalChan()
 
 	// Close attached execution WebSockets first; Shutdown waits for active
 	// connections and would otherwise hang on long-lived streams.
-	router.service.CloseWebSockets()
+	router.wsService.CloseWebSockets()
 
 	ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
 	defer cancel()

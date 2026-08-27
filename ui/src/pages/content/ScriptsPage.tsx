@@ -4,11 +4,7 @@ import {Button} from "antd";
 export function ScriptsPage() {
   return (
     <div style={pageContainerStyle}>
-      <Button type={"primary"} icon={""} style={{
 
-      }}>
-
-      </Button>
     </div>
   )
 }

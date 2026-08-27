@@ -27,12 +27,23 @@ var wsUpgrader = websocket.Upgrader{
 }
 
 type Router struct {
-	service *services.Service
+	scriptService      *services.ScriptService
+	environmentService *services.EnvironmentService
+	wsService          *services.WsService
+	serverController   *services.Server
 }
 
-func NewRouter(service *services.Service) *Router {
+func NewRouter(
+	scriptService *services.ScriptService,
+	environmentService *services.EnvironmentService,
+	wsService *services.WsService,
+	serverController *services.Server,
+) *Router {
 	return &Router{
-		service: service,
+		scriptService:      scriptService,
+		environmentService: environmentService,
+		wsService:          wsService,
+		serverController:   serverController,
 	}
 }
 
@@ -46,6 +57,7 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	api.GET("/getExecutions", router.getExecutions)
 
 	api.POST("/addScript", router.AddScript)
+	api.POST("/updateScript", router.UpdateScript)
 	api.POST("/deleteScript", router.DeleteScript)
 	api.POST("/executeScript", router.ExecuteScript)
 	api.POST("/addEnvironment", router.AddEnvironment)
@@ -61,7 +73,7 @@ func (router *Router) getStatus(c *gin.Context) {
 }
 
 func (router *Router) stopServer(c *gin.Context) {
-	router.service.StopServer()
+	router.serverController.StopServer()
 	c.JSON(200, gin.H{
 		"message": "server is stopping",
 	})
@@ -76,7 +88,7 @@ func writeError(c *gin.Context, apiErr *models.ApiError) {
 }
 
 func (router *Router) getStoredScripts(c *gin.Context) {
-	result, apiErr := router.service.ListScripts()
+	result, apiErr := router.scriptService.ListScripts()
 	if apiErr != nil {
 		writeError(c, apiErr)
 		return
@@ -92,7 +104,7 @@ func (router *Router) AddScript(c *gin.Context) {
 		return
 	}
 
-	result, apiErr := router.service.AddScript(req)
+	result, apiErr := router.scriptService.AddScript(req)
 	if apiErr != nil {
 		writeError(c, apiErr)
 		return
@@ -101,7 +113,23 @@ func (router *Router) AddScript(c *gin.Context) {
 }
 
 func (router *Router) DeleteScript(c *gin.Context) {
-	router.handleDelete(c, router.service.DeleteScript)
+	router.handleDelete(c, router.scriptService.DeleteScript)
+}
+
+func (router *Router) UpdateScript(c *gin.Context) {
+	req := &models.UpdateScriptRequest{}
+
+	if err := c.ShouldBind(&req); err != nil {
+		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
+		return
+	}
+
+	result, apiErr := router.scriptService.UpdateScript(req)
+	if apiErr != nil {
+		writeError(c, apiErr)
+		return
+	}
+	writeResult(c, result)
 }
 
 // ExecuteScript starts the script identified by the request id asynchronously
@@ -120,7 +148,7 @@ func (router *Router) ExecuteScript(c *gin.Context) {
 		return
 	}
 
-	execution, apiErr := router.service.StartExecution(req.Id)
+	execution, apiErr := router.scriptService.StartExecution(req)
 	if apiErr != nil {
 		writeError(c, apiErr)
 		return
@@ -157,7 +185,7 @@ func (router *Router) attachExecution(c *gin.Context) {
 		return
 	}
 
-	execution, apiErr := router.service.GetExecution(executionId)
+	execution, apiErr := router.scriptService.GetExecution(executionId)
 	if apiErr != nil {
 		writeError(c, apiErr)
 		return
@@ -168,11 +196,11 @@ func (router *Router) attachExecution(c *gin.Context) {
 		return
 	}
 
-	router.service.StreamExecution(conn, execution)
+	router.wsService.StreamExecution(conn, execution)
 }
 
 func (router *Router) getStoredEnvironments(c *gin.Context) {
-	result, apiErr := router.service.ListEnvironments()
+	result, apiErr := router.environmentService.ListEnvironments()
 	if apiErr != nil {
 		writeError(c, apiErr)
 		return
@@ -182,7 +210,7 @@ func (router *Router) getStoredEnvironments(c *gin.Context) {
 
 // getExecutions returns the id/status snapshot of all tracked executions.
 func (router *Router) getExecutions(c *gin.Context) {
-	result, apiErr := router.service.ListExecutions()
+	result, apiErr := router.scriptService.ListExecutions()
 	if apiErr != nil {
 		writeError(c, apiErr)
 		return
@@ -191,7 +219,7 @@ func (router *Router) getExecutions(c *gin.Context) {
 }
 
 func (router *Router) DeleteExecution(c *gin.Context) {
-	router.handleDelete(c, router.service.DeleteExecution)
+	router.handleDelete(c, router.scriptService.DeleteExecution)
 }
 
 func (router *Router) AddEnvironment(c *gin.Context) {
@@ -202,7 +230,7 @@ func (router *Router) AddEnvironment(c *gin.Context) {
 		return
 	}
 
-	result, apiErr := router.service.AddEnvironment(req)
+	result, apiErr := router.environmentService.AddEnvironment(req)
 	if apiErr != nil {
 		writeError(c, apiErr)
 		return
@@ -211,7 +239,7 @@ func (router *Router) AddEnvironment(c *gin.Context) {
 }
 
 func (router *Router) DeleteEnvironment(c *gin.Context) {
-	router.handleDelete(c, router.service.DeleteEnvironment)
+	router.handleDelete(c, router.environmentService.DeleteEnvironment)
 }
 
 func (router *Router) handleDelete(c *gin.Context, deleteFn func(id string) (*models.Result, *models.ApiError)) {

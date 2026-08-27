@@ -8,14 +8,14 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
 )
 
-func newTestService(t *testing.T) *Service {
+func newTestService(t *testing.T) *Server {
 	t.Helper()
 	db, err := storage.OpenOrCreate(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewService(storage.CreateScriptRepo(db), storage.CreateEnvironmentRepo(db))
+	return NewServerController(storage.CreateScriptRepo(db), storage.CreateEnvironmentRepo(db))
 }
 
 func envAsMap(env []string) map[string]string {
