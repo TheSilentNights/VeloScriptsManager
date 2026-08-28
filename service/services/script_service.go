@@ -78,6 +78,12 @@ func (service *ScriptService) UpdateScript(req *models.UpdateScriptRequest) (*mo
 }
 
 func (service *ScriptService) DeleteScript(id string) (*models.Result, *models.ApiError) {
+	if execution, ok := service.executions.get(id); ok {
+		if execution.Status() == "running" {
+			return nil, models.NewApiError(406, "script is running", execution)
+		}
+	}
+
 	if err := service.scriptRepo.Delete(id); err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return nil, models.NewApiError(404, "script not found", id)
