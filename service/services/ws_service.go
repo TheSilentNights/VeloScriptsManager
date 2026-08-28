@@ -25,7 +25,7 @@ func NewWsService() *WsService {
 	return &WsService{wsConns: make(map[*websocket.Conn]struct{})}
 }
 
-// StreamExecution streamExecution bridges an upgraded WebSocket to the stdio of the given
+// StreamExecution bridges an upgraded WebSocket to the stdio of the given
 // execution: WsService frames carry base64 output chunks plus a final exit frame,
 // client frames forward stdin/close/kill to the process.
 //

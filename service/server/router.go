@@ -5,7 +5,6 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/services"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 
@@ -14,18 +13,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var trustedHost = []string{
-	"localhost",
-	"127.0.0.1",
-}
 var wsUpgrader = websocket.Upgrader{
-	// The management UI is served from a different origin; accept all.
+	// The management UI is served from a different origin (browser on a
+	// different port, or the Electron renderer); accept all origins.
 	CheckOrigin: func(r *http.Request) bool {
-		if slices.Contains(trustedHost, r.Host) {
-			return true
-		}
-
-		return false
+		return true
 	},
 }
 
