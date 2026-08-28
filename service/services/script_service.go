@@ -126,7 +126,7 @@ func (service *ScriptService) StartExecution(req models.ExecuteScriptRequest) (*
 		return nil, models.NewApiError(500, "start script fail", err.Error())
 	}
 
-	execution := models.NewExecution(utils.GenerateExecutionId(), script.ID, script.Name, process)
+	execution := models.NewExecution(utils.GenerateExecutionId(), script.ID, script.Name, params, envIDs, process)
 	service.executions.add(execution)
 
 	go func() {
@@ -155,13 +155,15 @@ func (service *ScriptService) ListExecutions() (*models.Result, *models.ApiError
 	list := make([]models.ExecutionStatusInfo, 0, len(executions))
 	for _, e := range executions {
 		list = append(list, models.ExecutionStatusInfo{
-			ExecutionId: e.ID,
-			ScriptId:    e.ScriptID,
-			Name:        e.Name,
-			StartedAt:   e.StartedAt,
-			Status:      e.Status(),
-			ExitCode:    e.ExitCode(),
-			Error:       e.Error(),
+			ExecutionId:  e.ID,
+			ScriptId:     e.ScriptID,
+			Name:         e.Name,
+			StartedAt:    e.StartedAt,
+			Params:       e.Params,
+			Environments: e.Environments,
+			Status:       e.Status(),
+			ExitCode:     e.ExitCode(),
+			Error:        e.Error(),
 		})
 	}
 

@@ -9,10 +9,12 @@ import (
 
 // Execution tracks one asynchronously running script process.
 type Execution struct {
-	ID        string    `json:"executionId"`
-	ScriptID  string    `json:"scriptId"`
-	Name      string    `json:"name"`
-	StartedAt time.Time `json:"startedAt"`
+	ID           string    `json:"executionId"`
+	ScriptID     string    `json:"scriptId"`
+	Name         string    `json:"name"`
+	StartedAt    time.Time `json:"startedAt"`
+	Params       []string  `json:"params"`       // params used for this run
+	Environments []string  `json:"environments"` // environment ids applied for this run
 
 	mu       sync.Mutex
 	status   string // running | finished | failed
@@ -21,15 +23,17 @@ type Execution struct {
 	process  *executor.Process
 }
 
-func NewExecution(id, scriptID, name string, process *executor.Process) *Execution {
+func NewExecution(id, scriptID, name string, params, environments []string, process *executor.Process) *Execution {
 	return &Execution{
-		ID:        id,
-		ScriptID:  scriptID,
-		Name:      name,
-		StartedAt: time.Now(),
-		status:    "running",
-		exitCode:  -1,
-		process:   process,
+		ID:           id,
+		ScriptID:     scriptID,
+		Name:         name,
+		StartedAt:    time.Now(),
+		Params:       params,
+		Environments: environments,
+		status:       "running",
+		exitCode:     -1,
+		process:      process,
 	}
 }
 
@@ -78,6 +82,8 @@ type ExecutionStatusInfo struct {
 	ScriptId    string    `json:"scriptId"`
 	Name        string    `json:"name"`
 	StartedAt   time.Time `json:"startedAt"`
+	Params      []string  `json:"params"`
+	Environments []string `json:"environments"`
 	Status      string    `json:"status"`   // running | finished | failed
 	ExitCode    int       `json:"exitCode"` // -1 while still running
 	Error       string    `json:"error"`
