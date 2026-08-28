@@ -1,5 +1,11 @@
 export {}
 
+declare module "react" {
+    interface CSSProperties {
+        WebkitAppRegion?: "drag" | "no-drag"
+    }
+}
+
 declare global {
   interface Window {
     electronAPI: {
