@@ -46,8 +46,8 @@ export function ScriptEditorModal({
                 name: script.name,
                 workDir: script.workDir,
                 runner: script.runner,
-                params: script.params,
-                environments: script.environments,
+                params: script.params ?? [],
+                environments: script.environments ?? [],
             });
         } else {
             form.resetFields();
@@ -62,7 +62,7 @@ export function ScriptEditorModal({
             workDir: values.workDir,
             runner: values.runner,
             params: values.params ?? [],
-            environments: values.environments ?? [],
+            environmentsId: values.environments ?? [],
         });
     };
 
@@ -78,7 +78,22 @@ export function ScriptEditorModal({
                 closable: false
             }}
         >
-            <Form form={form} layout="vertical" preserve={false}>
+            <Form
+                form={form}
+                layout="vertical"
+                preserve={false}
+                initialValues={
+                    script
+                        ? {
+                              name: script.name,
+                              workDir: script.workDir,
+                              runner: script.runner,
+                              params: script.params ?? [],
+                              environments: script.environments ?? [],
+                          }
+                        : {params: [], environments: []}
+                }
+            >
                 <Form.Item
                     label="名称"
                     name="name"
@@ -105,6 +120,7 @@ export function ScriptEditorModal({
                         mode="tags"
                         placeholder="输入参数后回车添加"
                         tokenSeparators={[",", " "]}
+                        onChange={() => setParamSearch("")}
                         showSearch={{
                             onSearch: setParamSearch,
                             searchValue: paramSearch

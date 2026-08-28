@@ -25,6 +25,10 @@ export interface ExecutionInfo {
     executionId: string
     scriptId: string
     name: string
+    status: string // running | finished | failed
+    startedAt?: string
+    exitCode?: number
+    error?: string
 }
 
 export interface ApiEnvelope<T> {

@@ -1,25 +1,43 @@
+import axios, {type AxiosRequestConfig} from "axios";
 import type {Environment, ExecutionInfo, Script} from "../types/models";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "http://127.0.0.1:8080";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${API_BASE}${path}`, {
-        headers: {"Content-Type": "application/json"},
-        ...init,
+const http = axios.create({
+    baseURL: API_BASE,
+    headers: {"Content-Type": "application/json"},
+});
+
+
+interface ApiEnvelope<T> {
+    code: number
+    message: string
+    data: T
+}
+
+async function sendGet<T>(path: string, config?:AxiosRequestConfig): Promise<T> {
+    const res = await http.get<ApiEnvelope<T>>(path,config);
+    const body = res.data;
+
+    console.log(body.message)
+
+    return body.data;
+}
+
+async function sendPost<T>(path: string, data? : any, config?: AxiosRequestConfig): Promise<T> {
+    const res = await http.post<ApiEnvelope<T>>(path,data,config).catch((err) => {
+        console.error(err.response.data.message)
+        throw err
     });
+    const body = res.data;
 
-    const text = await res.text();
-    const body = text ? JSON.parse(text) : {};
+    console.log(body.message)
 
-    if (body.code !== undefined && body.code !== 200) {
-        throw new Error(body.message || `request failed with ${res.status}`);
-    }
-
-    return body.data as T;
+    return body.data;
 }
 
 export function fetchScripts(): Promise<Script[]> {
-    return request<Script[]>("/api/v1/getStoredScripts");
+    return sendGet<Script[]>("/api/v1/getStoredScripts");
 }
 
 export interface ScriptPayload {
@@ -27,28 +45,22 @@ export interface ScriptPayload {
     workDir: string
     runner: string
     params: string[]
-    environments: string[]
+    environmentsId: string[]
 }
 
-export function addScript(payload: ScriptPayload): Promise<unknown> {
-    return request("/api/v1/addScript", {
-        method: "POST",
-        body: JSON.stringify(payload),
-    });
+export function addScript(payload: ScriptPayload): Promise<ScriptPayload> {
+    return sendPost<ScriptPayload>("/api/v1/addScript", payload);
 }
 
-export function updateScript(id: string, payload: ScriptPayload): Promise<unknown> {
-    return request("/api/v1/updateScript", {
-        method: "POST",
-        body: JSON.stringify({id, ...payload}),
+export function updateScript(id: string, payload: ScriptPayload): Promise<ScriptPayload> {
+    return sendPost("/api/v1/updateScript", {
+        id:id,
+        ...payload
     });
 }
 
 export function deleteScript(id: string): Promise<unknown> {
-    return request("/api/v1/deleteScript", {
-        method: "POST",
-        body: JSON.stringify({id}),
-    });
+    return sendPost("/api/v1/deleteScript",{id:id});
 }
 
 export function executeScript(
@@ -56,12 +68,17 @@ export function executeScript(
     params: string[],
     environments: string[],
 ): Promise<ExecutionInfo> {
-    return request<ExecutionInfo>("/api/v1/executeScript", {
-        method: "POST",
-        body: JSON.stringify({id, params, environmentsid: environments}),
+    return sendPost<ExecutionInfo>("/api/v1/executeScript", {
+        id,
+        params,
+        environmentsid: environments,
     });
 }
 
 export function fetchEnvironments(): Promise<Environment[]> {
-    return request<Environment[]>("/api/v1/getEnvironments");
+    return sendGet<Environment[]>("/api/v1/getEnvironments",{method: "GET"});
+}
+
+export function getExecutions(): Promise<ExecutionInfo[]> {
+    return sendGet<ExecutionInfo[]>("/api/v1/getExecutions");
 }
