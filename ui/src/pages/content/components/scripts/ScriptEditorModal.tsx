@@ -1,10 +1,13 @@
-import {useEffect} from "react";
+import {useEffect, useState} from "react";
 import {
+    Button,
+    Divider,
     Form,
     Input,
     Modal,
     Select,
 } from "antd";
+import {PlusOutlined} from "@ant-design/icons";
 import type {Environment, Script} from "../../../../types/models";
 import type {ScriptPayload} from "../../../../ts/api";
 
@@ -24,6 +27,17 @@ export function ScriptEditorModal({
     onSubmit,
 }: ScriptEditorModalProps) {
     const [form] = Form.useForm();
+    const [paramSearch, setParamSearch] = useState("");
+
+    const addParamFromSearch = () => {
+        const value = paramSearch.trim();
+        if (!value) return;
+        const current: string[] = form.getFieldValue("params") ?? [];
+        if (!current.includes(value)) {
+            form.setFieldsValue({params: [...current, value]});
+        }
+        setParamSearch("");
+    };
 
     useEffect(() => {
         if (!open) return;
@@ -61,7 +75,7 @@ export function ScriptEditorModal({
             onCancel={onCancel}
             destroyOnHidden={true}
             mask={{
-                closable:true
+                closable: false
             }}
         >
             <Form form={form} layout="vertical" preserve={false}>
@@ -91,6 +105,25 @@ export function ScriptEditorModal({
                         mode="tags"
                         placeholder="输入参数后回车添加"
                         tokenSeparators={[",", " "]}
+                        showSearch={{
+                            onSearch: setParamSearch,
+                            searchValue: paramSearch
+                        }}
+                        popupRender={(menu) => (
+                            <>
+                                {menu}
+                                <Divider style={{margin: "4px 0"}}/>
+                                <Button
+                                    type="text"
+                                    icon={<PlusOutlined/>}
+                                    block
+                                    disabled={!paramSearch.trim()}
+                                    onClick={addParamFromSearch}
+                                >
+                                    添加 “{paramSearch.trim() || "参数"}”
+                                </Button>
+                            </>
+                        )}
                     />
                 </Form.Item>
                 <Form.Item label="绑定环境 (environments)" name="environments">

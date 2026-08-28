@@ -102,14 +102,14 @@ function ScriptTileBody({script}: ScriptTileProps) {
                             title="删除脚本"
                             description="确定要删除该脚本吗？"
                             okText="删除"
-                            okButtonProps={{danger: true}}
+                            okButtonProps={{color: "danger"}}
                             cancelText="取消"
                             onConfirm={handleDelete}
                         >
                             <Button
                                 type="text"
                                 size="small"
-                                danger
+                                color="danger"
                                 icon={<DeleteOutlined/>}
                             />
                         </Popconfirm>
