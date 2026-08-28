@@ -16,7 +16,7 @@ func NewServerController(
 	manager *ExecutionManager,
 ) *Server {
 	return &Server{
-		ExecutionManager:   manager,
+		executionManager:   manager,
 		shutdownSignalChan: make(chan struct{}),
 		shutdownOnce:       sync.Once{},
 	}

@@ -6,7 +6,10 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/services"
 	"net/http"
 	"slices"
+	"strings"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -48,16 +51,19 @@ func NewRouter(
 }
 
 func (router *Router) RegisterRoutes(engine *gin.Engine) {
-	engine.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	})
+
+	engine.Use(cors.New(cors.Config{
+		AllowOriginFunc: func(origin string) bool {
+			return origin == "http://localhost:5173" ||
+				origin == "http://127.0.0.1:5173" ||
+				strings.HasPrefix(origin, "http://127.0.0.1:")
+		},
+		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	engine.GET("/status", router.getStatus)
 

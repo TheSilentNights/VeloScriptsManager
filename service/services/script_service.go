@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/http"
 	"sort"
 
 	"github/TheSilentNights/VeloScriptsManager/service/executor"
@@ -95,7 +96,7 @@ func (service *ScriptService) StartExecution(req models.ExecuteScriptRequest) (*
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.NewApiError(404, "script not found", err.Error())
 		}
-		return nil, models.NewApiError(500, "get script fail", err.Error())
+		return nil, models.NewApiError(http.StatusNotFound, "get script fail", err.Error())
 	}
 
 	// 优先使用前端传递的覆盖参数，否则回退到脚本存储值。

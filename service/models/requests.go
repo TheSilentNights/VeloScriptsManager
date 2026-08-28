@@ -4,7 +4,7 @@ import "github/TheSilentNights/VeloScriptsManager/service/storage"
 
 type AddScriptRequest struct {
 	Name           string   `form:"name" json:"name"`
-	WorkDir        string   `form:"workdir" json:"workdir"`
+	WorkDir        string   `form:"workdir" json:"workDir"`
 	Runner         string   `form:"runner" json:"runner"`
 	Params         []string `form:"params" json:"params"`
 	EnvironmentsId []string `form:"environmentsid" json:"environmentsid"` // environment ids to apply
