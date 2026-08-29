@@ -7,18 +7,15 @@ export interface Script {
     id: string
     name: string
     workDir: string
-    runner: string
-    params: string[]
+    command: string[]
     environments: string[]
 }
 
 export interface Environment {
     id: string
     name: string
-    type: string
-    path: string
+    paths: string[]
     env: EnvVar[]
-    children: string[]
 }
 
 export interface ExecutionInfo {
@@ -26,6 +23,8 @@ export interface ExecutionInfo {
     scriptId: string
     name: string
     status: string // running | finished | failed
+    command: string[]
+    environments: string[]
     startedAt?: string
     exitCode?: number
     error?: string

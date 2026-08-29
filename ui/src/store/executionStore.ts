@@ -1,18 +1,17 @@
 import {create} from "zustand";
 import type {ExecutionInfo} from "../types/models";
-import {getExecutions} from "../ts/api";
-
-const POLL_INTERVAL = 3000;
+import {
+    deleteExecution as apiDeleteExecution,
+    getExecutions,
+} from "../ts/api";
 
 interface ExecutionState {
     executions: ExecutionInfo[]
     loading: boolean
     error: string | null
     load: () => Promise<void>
-    startPolling: () => () => void
+    remove: (id: string) => Promise<void>
 }
-
-let timer: ReturnType<typeof setInterval> | null = null;
 
 export const useExecutionStore = create<ExecutionState>((set, get) => ({
     executions: [],
@@ -29,21 +28,9 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
         }
     },
 
-    startPolling() {
-        if (timer) {
-            return () => {
-            };
-        }
-        void get().load();
-        timer = setInterval(() => {
-            void get().load();
-        }, POLL_INTERVAL);
-        return () => {
-            if (timer) {
-                clearInterval(timer);
-                timer = null;
-            }
-        };
+    async remove(id) {
+        await apiDeleteExecution(id);
+        set({executions: get().executions.filter((e) => e.executionId !== id)});
     },
 }));
 

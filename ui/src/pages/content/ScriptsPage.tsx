@@ -4,9 +4,9 @@ import {PlusOutlined,LoadingOutlined} from "@ant-design/icons";
 import {useScriptStore} from "../../store/scriptStore";
 import {useEnvironmentStore} from "../../store/environmentStore";
 import {useExecutionStore} from "../../store/executionStore";
+import type {ScriptPayload} from "../../ts/api";
 import {ScriptTile} from "./components/scripts/ScriptTile";
 import {ScriptEditorModal} from "./components/scripts/ScriptEditorModal";
-import type {ScriptPayload} from "../../ts/api";
 
 export function ScriptsPage() {
     const {message} = App.useApp();
@@ -16,7 +16,7 @@ export function ScriptsPage() {
     const add = useScriptStore((s) => s.add);
     const environmentStore = useEnvironmentStore((s) => s.load);
     const environments = useEnvironmentStore((s) => s.environments);
-    const startPolling = useExecutionStore((s) => s.startPolling);
+    const loadExecutions = useExecutionStore((s) => s.load);
 
     const [creating, setCreating] = useState(false);
 
@@ -24,9 +24,8 @@ export function ScriptsPage() {
     useEffect(() => {
         scriptStore();
         environmentStore();
-        const stop = startPolling();
-        return stop;
-    }, [scriptStore, environmentStore, startPolling]);
+        loadExecutions();
+    }, [scriptStore, environmentStore, loadExecutions]);
 
     const handleCreate = async (payload: ScriptPayload) => {
         try {

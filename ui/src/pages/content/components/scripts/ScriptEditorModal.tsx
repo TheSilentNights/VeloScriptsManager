@@ -27,16 +27,16 @@ export function ScriptEditorModal({
     onSubmit,
 }: ScriptEditorModalProps) {
     const [form] = Form.useForm();
-    const [paramSearch, setParamSearch] = useState("");
+    const [commandSearch, setCommandSearch] = useState("");
 
-    const addParamFromSearch = () => {
-        const value = paramSearch.trim();
+    const addCommandFromSearch = () => {
+        const value = commandSearch.trim();
         if (!value) return;
-        const current: string[] = form.getFieldValue("params") ?? [];
+        const current: string[] = form.getFieldValue("command") ?? [];
         if (!current.includes(value)) {
-            form.setFieldsValue({params: [...current, value]});
+            form.setFieldsValue({command: [...current, value]});
         }
-        setParamSearch("");
+        setCommandSearch("");
     };
 
     useEffect(() => {
@@ -45,13 +45,12 @@ export function ScriptEditorModal({
             form.setFieldsValue({
                 name: script.name,
                 workDir: script.workDir,
-                runner: script.runner,
-                params: script.params ?? [],
+                command: script.command ?? [],
                 environments: script.environments ?? [],
             });
         } else {
             form.resetFields();
-            form.setFieldsValue({params: [], environments: []});
+            form.setFieldsValue({command: [], environments: []});
         }
     }, [open, script, form]);
 
@@ -60,8 +59,7 @@ export function ScriptEditorModal({
         await onSubmit({
             name: values.name,
             workDir: values.workDir,
-            runner: values.runner,
-            params: values.params ?? [],
+            command: values.command ?? [],
             environmentsId: values.environments ?? [],
         });
     };
@@ -87,11 +85,10 @@ export function ScriptEditorModal({
                         ? {
                               name: script.name,
                               workDir: script.workDir,
-                              runner: script.runner,
-                              params: script.params ?? [],
+                              command: script.command ?? [],
                               environments: script.environments ?? [],
                           }
-                        : {params: [], environments: []}
+                        : {command: [], environments: []}
                 }
             >
                 <Form.Item
@@ -108,22 +105,15 @@ export function ScriptEditorModal({
                 >
                     <Input placeholder="例如 C:\\repo"/>
                 </Form.Item>
-                <Form.Item
-                    label="执行程序 (runner)"
-                    name="runner"
-                    rules={[{required: true, message: "请输入执行程序"}]}
-                >
-                    <Input placeholder="例如 npm"/>
-                </Form.Item>
-                <Form.Item label="参数 (params)" name="params">
+                <Form.Item label="命令 (command)" name="command">
                     <Select
                         mode="tags"
-                        placeholder="输入参数后回车添加"
+                        placeholder="输入命令节点后回车添加"
                         tokenSeparators={[",", " "]}
-                        onChange={() => setParamSearch("")}
+                        onChange={() => setCommandSearch("")}
                         showSearch={{
-                            onSearch: setParamSearch,
-                            searchValue: paramSearch
+                            onSearch: setCommandSearch,
+                            searchValue: commandSearch
                         }}
                         popupRender={(menu) => (
                             <>
@@ -133,10 +123,10 @@ export function ScriptEditorModal({
                                     type="text"
                                     icon={<PlusOutlined/>}
                                     block
-                                    disabled={!paramSearch.trim()}
-                                    onClick={addParamFromSearch}
+                                    disabled={!commandSearch.trim()}
+                                    onClick={addCommandFromSearch}
                                 >
-                                    添加 “{paramSearch.trim() || "参数"}”
+                                    添加 “{commandSearch.trim() || "命令"}”
                                 </Button>
                             </>
                         )}

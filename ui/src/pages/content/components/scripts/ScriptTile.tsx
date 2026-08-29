@@ -6,7 +6,6 @@ import {
     Popconfirm,
     Select,
     Space,
-    Tag,
     Typography,
 } from "antd";
 import {
@@ -27,7 +26,7 @@ interface ScriptTileProps {
 
 export function ScriptTile({script}: ScriptTileProps) {
     console.log(script)
-    const syncKey = `${script.id}:${script.params.join(",")}:${script.environments.join(",")}`;
+    const syncKey = `${script.id}:${script.command.join(" ")}:${script.environments.join(",")}`;
 
     return (
         <ScriptTileBody key={syncKey} script={script}/>
@@ -45,7 +44,7 @@ function ScriptTileBody({script}: ScriptTileProps) {
 
     const [editing, setEditing] = useState(false);
     const [executing, setExecuting] = useState(false);
-    const [enabledParams, setEnabledParams] = useState<string[]>(script.params);
+    const [enabledCommand, setEnabledCommand] = useState<string[]>(script.command);
     const [enabledEnvironments, setEnabledEnvironments] = useState<string[]>(
         script.environments,
     );
@@ -55,7 +54,7 @@ function ScriptTileBody({script}: ScriptTileProps) {
         try {
             const info = await executeScript(
                 script.id,
-                enabledParams,
+                enabledCommand,
                 enabledEnvironments,
             );
             message.success(`已启动执行：${info.name}`);
@@ -151,27 +150,18 @@ function ScriptTileBody({script}: ScriptTileProps) {
 
                     <div>
                         <Typography.Text type="secondary" style={{fontSize: 12}}>
-                            runner
-                        </Typography.Text>
-                        <div>
-                            <Tag>{script.runner}</Tag>
-                        </div>
-                    </div>
-
-                    <div>
-                        <Typography.Text type="secondary" style={{fontSize: 12}}>
-                            启用参数 (params)
+                            启用命令 (command)
                         </Typography.Text>
                         <Select
                             mode="multiple"
                             size="small"
                             style={{width: "100%"}}
-                            placeholder="选择执行时启用的参数"
-                            value={enabledParams}
-                            onChange={setEnabledParams}
-                            options={script.params.map((p) => ({
-                                label: p,
-                                value: p,
+                            placeholder="选择执行时启用的命令节点"
+                            value={enabledCommand}
+                            onChange={setEnabledCommand}
+                            options={script.command.map((c) => ({
+                                label: c,
+                                value: c,
                             }))}
                             maxTagCount="responsive"
                         />

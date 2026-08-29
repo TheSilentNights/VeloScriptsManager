@@ -4,7 +4,7 @@ import {AppShell} from "./AppShell.tsx";
 export default function MainWindow() {
     return (
         <ConfigProvider theme={{token: {colorPrimary: "#4f46e5"}}}>
-            <App>
+            <App style={{width: "100%", height: "100%"}}>
                 <div style={mainWindowStyle}>
                     <AppShell/>
                 </div>

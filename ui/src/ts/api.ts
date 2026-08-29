@@ -1,5 +1,5 @@
 import axios, {type AxiosRequestConfig} from "axios";
-import type {Environment, ExecutionInfo, Script} from "../types/models";
+import type {Environment, EnvVar, ExecutionInfo, Script} from "../types/models";
 
 const API_BASE = "http://127.0.0.1:8080";
 
@@ -43,8 +43,7 @@ export function fetchScripts(): Promise<Script[]> {
 export interface ScriptPayload {
     name: string
     workDir: string
-    runner: string
-    params: string[]
+    command: string[]
     environmentsId: string[]
 }
 
@@ -65,12 +64,12 @@ export function deleteScript(id: string): Promise<unknown> {
 
 export function executeScript(
     id: string,
-    params: string[],
+    command: string[],
     environments: string[],
 ): Promise<ExecutionInfo> {
     return sendPost<ExecutionInfo>("/api/v1/executeScript", {
         id,
-        params,
+        command,
         environmentsid: environments,
     });
 }
@@ -79,6 +78,43 @@ export function fetchEnvironments(): Promise<Environment[]> {
     return sendGet<Environment[]>("/api/v1/getEnvironments",{method: "GET"});
 }
 
+export interface EnvironmentPayload {
+    name: string
+    paths: string[]
+    env: EnvVar[]
+}
+
+export function addEnvironment(payload: EnvironmentPayload): Promise<unknown> {
+    return sendPost("/api/v1/addEnvironment", payload);
+}
+
+export function updateEnvironment(id: string, payload: EnvironmentPayload): Promise<unknown> {
+    return sendPost("/api/v1/updateEnvironment", {
+        id,
+        ...payload,
+    });
+}
+
+export function deleteEnvironment(id: string): Promise<unknown> {
+    return sendPost("/api/v1/deleteEnvironment", {id: id});
+}
+
 export function getExecutions(): Promise<ExecutionInfo[]> {
     return sendGet<ExecutionInfo[]>("/api/v1/getExecutions");
+}
+
+export function deleteExecution(id: string): Promise<unknown> {
+    return sendPost("/api/v1/deleteExecution", {id: id});
+}
+
+export interface ConfigPayload {
+    fontSize: number
+}
+
+export function fetchConfig(): Promise<ConfigPayload> {
+    return sendGet<ConfigPayload>("/api/v1/getConfig");
+}
+
+export function updateConfig(payload: ConfigPayload): Promise<unknown> {
+    return sendPost("/api/v1/updateConfig", payload);
 }

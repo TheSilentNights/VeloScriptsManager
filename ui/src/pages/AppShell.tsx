@@ -14,13 +14,13 @@ import {
 } from "@ant-design/icons";
 import "./AppShell.less";
 import {ScriptsPage} from "./content/ScriptsPage.tsx";
-import {AttachPage} from "./content/AttachPage.tsx";
+import {ExecutionsPage} from "./content/ExecutionsPage.tsx";
 import {EnvironmentsPage} from "./content/EnvironmentsPage.tsx";
 import {SettingsPage} from "./content/SettingsPage.tsx";
 
 const {Sider, Content} = Layout;
 
-type PageKey = "environments" | "scripts" | "attach" | "settings";
+type PageKey = "environments" | "scripts" | "executions" | "settings";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -30,7 +30,7 @@ const menuItems: MenuItem[] = [
         label: "Operations",
         children: [
             {key: "scripts", icon: <CodeOutlined/>, label: "脚本管理"},
-            {key: "attach", icon: <DesktopOutlined/>, label: "Attach"},
+            {key: "executions", icon: <DesktopOutlined/>, label: "Executions"},
         ],
     },
     {
@@ -47,8 +47,8 @@ const renderPage = (pageKey: PageKey) => {
     switch (pageKey) {
         case "scripts":
             return <ScriptsPage/>
-        case "attach":
-            return <AttachPage/>
+        case "executions":
+            return <ExecutionsPage/>
         case "environments":
             return <EnvironmentsPage/>
         case "settings":
@@ -83,7 +83,7 @@ export function AppShell() {
                     />
                 </Sider>
                 <Layout style={contentLayoutStyle}>
-                    <Content style={{padding: 28, overflow: "auto"}}>
+                    <Content style={{height: "100%", padding: 28, overflow: "auto"}}>
                         {renderPage(page)}
                     </Content>
                 </Layout>
@@ -150,6 +150,7 @@ const siderStyle: CSSProperties = {
 
 const contentLayoutStyle: CSSProperties = {
     backgroundColor: "#ffffff",
+    height: "100%",
 }
 
 const headerStyle: CSSProperties = {
