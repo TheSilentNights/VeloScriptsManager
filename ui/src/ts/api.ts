@@ -1,11 +1,28 @@
 import axios, {type AxiosRequestConfig} from "axios";
 import type {Environment, EnvVar, ExecutionInfo, Script} from "../types/models";
 
-const API_BASE = "http://127.0.0.1:8080";
-
 const http = axios.create({
-    baseURL: API_BASE,
     headers: {"Content-Type": "application/json"},
+});
+
+let baseReady: Promise<void> | null = null;
+
+function initBase(): Promise<void> {
+    if (!baseReady) {
+        baseReady = (async () => {
+            const port = await window.electronAPI.getServerPort();
+            if (!port) {
+                throw new Error("failed to resolve server port");
+            }
+            http.defaults.baseURL = `http://127.0.0.1:${port}`;
+        })();
+    }
+    return baseReady;
+}
+
+http.interceptors.request.use(async (config) => {
+    await initBase();
+    return config;
 });
 
 

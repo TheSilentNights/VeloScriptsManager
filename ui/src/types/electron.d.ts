@@ -13,6 +13,7 @@ declare global {
       minimizeWindow: () => void
       maximizeWindow: () => void
       closeWindow: () => void
+      getServerPort: () => Promise<number | null>
       onMaximizeChange: (callback: (isMaximized: boolean) => void) => void
     }
   }

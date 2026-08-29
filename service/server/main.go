@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -21,6 +22,7 @@ const serverShutdownTimeout = 10 * time.Second
 
 func main() {
 	release := flag.Bool("release", false, "run gin in release mode")
+	port := flag.Int("port", 19278, "http listen port")
 	flag.Parse()
 
 	if *release {
@@ -59,7 +61,7 @@ func main() {
 	router.RegisterRoutes(r)
 
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    fmt.Sprintf(":%d", *port),
 		Handler: r.Handler(),
 	}
 
