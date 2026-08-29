@@ -32,52 +32,45 @@ func envAsMap(env []string) map[string]string {
 func TestResolveEnvironmentVars(t *testing.T) {
 	service := newTestService(t)
 
-	// B is a base env; A inherits from B; C inherits from A and overrides K1.
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "B", Name: "B", Env: []storage.EnvVar{{Key: "K2", Value: "v2"}}})
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "A", Name: "A", Env: []storage.EnvVar{{Key: "K1", Value: "v1"}}, Children: []string{"B"}})
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "C", Name: "C", Env: []storage.EnvVar{{Key: "K1", Value: "override"}}, Children: []string{"A"}})
+	_ = service.environmentRepo.Upsert(storage.Environment{ID: "A", Name: "A", Env: []storage.EnvVar{{Key: "K1", Value: "v1"}, {Key: "K2", Value: "v2"}}, Paths: []string{`C:\jdk\bin`}})
+	_ = service.environmentRepo.Upsert(storage.Environment{ID: "B", Name: "B", Env: []storage.EnvVar{{Key: "K1", Value: "override"}}})
 
-	env, apiErr := service.resolveEnvironmentVars([]string{"C"})
+	env, apiErr := service.resolveEnvironmentVars([]string{"A", "B"})
 	if apiErr != nil {
 		t.Fatalf("unexpected error: %v", apiErr)
 	}
 
 	got := envAsMap(env)
 	if got["K1"] != "override" {
-		t.Fatalf("expected K1=override (own value overrides child), got %q", got["K1"])
+		t.Fatalf("expected K1=override (later env wins), got %q", got["K1"])
 	}
 	if got["K2"] != "v2" {
-		t.Fatalf("expected K2=v2 from inherited base env, got %q", got["K2"])
+		t.Fatalf("expected K2=v2 from earlier env, got %q", got["K2"])
+	}
+	if got["Path"] != `C:\jdk\bin` {
+		t.Fatalf("expected Path collected from paths, got %q", got["Path"])
 	}
 }
 
-// TestResolveEnvironmentVarsLaterWins checks that a top-level environment listed
-// later overrides an earlier one, even when it is the child of a preceding env.
+// TestResolveEnvironmentVarsLaterWins checks that an environment listed later
+// overrides an earlier one, and its paths are appended after existing ones.
 func TestResolveEnvironmentVarsLaterWins(t *testing.T) {
 	service := newTestService(t)
 
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "C", Name: "C", Env: []storage.EnvVar{{Key: "K", Value: "child"}}})
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "P", Name: "P", Env: []storage.EnvVar{{Key: "K", Value: "parent"}}, Children: []string{"C"}})
+	_ = service.environmentRepo.Upsert(storage.Environment{ID: "C", Name: "C", Env: []storage.EnvVar{{Key: "K", Value: "first"}}, Paths: []string{`C:\a`}})
+	_ = service.environmentRepo.Upsert(storage.Environment{ID: "P", Name: "P", Env: []storage.EnvVar{{Key: "K", Value: "second"}}, Paths: []string{`C:\b`, `C:\a`}})
 
-	env, apiErr := service.resolveEnvironmentVars([]string{"P", "C"})
+	env, apiErr := service.resolveEnvironmentVars([]string{"C", "P"})
 	if apiErr != nil {
 		t.Fatalf("unexpected error: %v", apiErr)
 	}
 
-	if got := envAsMap(env); got["K"] != "child" {
-		t.Fatalf("expected K=child (later-listed child overrides parent), got %q", got["K"])
+	got := envAsMap(env)
+	if got["K"] != "second" {
+		t.Fatalf("expected K=second (later env wins), got %q", got["K"])
 	}
-}
-
-func TestResolveEnvironmentVarsCycle(t *testing.T) {
-	service := newTestService(t)
-
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "X", Name: "X", Children: []string{"Y"}})
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "Y", Name: "Y", Children: []string{"X"}})
-
-	_, apiErr := service.resolveEnvironmentVars([]string{"X"})
-	if apiErr == nil {
-		t.Fatal("expected a cycle error, got nil")
+	if got["Path"] != `C:\a;C:\b` {
+		t.Fatalf("expected Path=C:\\a;C:\\b (first occurrence kept), got %q", got["Path"])
 	}
 }
 

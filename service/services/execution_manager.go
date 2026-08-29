@@ -1,8 +1,9 @@
 package services
 
 import (
-	"sort"
 	"sync"
+
+	"github.com/emirpasic/gods/maps/linkedhashmap"
 
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 )
@@ -11,53 +12,54 @@ import (
 // clients can attach to their stdio pipes after they have been started.
 type ExecutionManager struct {
 	mu         sync.Mutex
-	executions map[string]*models.Execution
+	executions *linkedhashmap.Map
 }
 
 func NewExecutionManager() *ExecutionManager {
-	return &ExecutionManager{executions: make(map[string]*models.Execution)}
+	return &ExecutionManager{executions: linkedhashmap.New()}
 }
 
 func (m *ExecutionManager) add(execution *models.Execution) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.executions[execution.ID] = execution
+	m.executions.Put(execution.ID, execution)
 }
 
 func (m *ExecutionManager) get(id string) (*models.Execution, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	execution, ok := m.executions[id]
-	return execution, ok
+	value, found := m.executions.Get(id)
+	if !found {
+		return nil, false
+	}
+	return value.(*models.Execution), true
 }
 
 func (m *ExecutionManager) remove(id string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.executions, id)
+	m.executions.Remove(id)
 }
 
 // list returns every tracked execution ordered by start time.
 func (m *ExecutionManager) list() []*models.Execution {
 	m.mu.Lock()
-	out := make([]*models.Execution, 0, len(m.executions))
-	for _, e := range m.executions {
-		out = append(out, e)
+	values := m.executions.Values()
+	out := make([]*models.Execution, 0, len(values))
+	for _, v := range values {
+		out = append(out, v.(*models.Execution))
 	}
 	m.mu.Unlock()
-
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].StartedAt.Before(out[j].StartedAt)
-	})
 	return out
 }
 
 // killRunning force-terminates every still-running tracked process.
 func (m *ExecutionManager) killRunning() {
 	m.mu.Lock()
-	executions := make([]*models.Execution, 0, len(m.executions))
-	for _, e := range m.executions {
-		executions = append(executions, e)
+	values := m.executions.Values()
+	executions := make([]*models.Execution, 0, len(values))
+	for _, v := range values {
+		executions = append(executions, v.(*models.Execution))
 	}
 	m.mu.Unlock()
 

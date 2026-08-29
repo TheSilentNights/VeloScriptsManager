@@ -41,12 +41,10 @@ func main() {
 	)
 	environmentService := services.NewEnvironmentService(environmentRepo)
 	scriptService := services.NewScriptService(scriptRepo, executionManager, environmentService)
-	wsService := services.NewWsService()
 
 	router := NewRouter(
 		scriptService,
 		environmentService,
-		wsService,
 		serverController,
 	)
 
@@ -67,10 +65,6 @@ func main() {
 
 	//wait for the shutdown Channel to close
 	<-serverController.GetShutdownSignalChan()
-
-	// Close attached execution WebSockets first; Shutdown waits for active
-	// connections and would otherwise hang on long-lived streams.
-	router.wsService.CloseWebSockets()
 
 	ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
 	defer cancel()

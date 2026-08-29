@@ -6,6 +6,9 @@ import (
 	"errors"
 	"net/http"
 	"sort"
+	"strings"
+
+	"github.com/emirpasic/gods/sets/linkedhashset"
 
 	"github/TheSilentNights/VeloScriptsManager/service/executor"
 	"github/TheSilentNights/VeloScriptsManager/service/models"
@@ -41,8 +44,7 @@ func (service *ScriptService) AddScript(req *models.AddScriptRequest) (*models.R
 		ID:           utils.GenerateScriptId(),
 		Name:         req.Name,
 		WorkDir:      req.WorkDir,
-		Runner:       req.Runner,
-		Params:       req.Params,
+		Command:      req.Command,
 		Environments: req.EnvironmentsId,
 	}
 
@@ -62,8 +64,7 @@ func (service *ScriptService) UpdateScript(req *models.UpdateScriptRequest) (*mo
 		ID:           req.Id,
 		Name:         req.Name,
 		WorkDir:      req.WorkDir,
-		Runner:       req.Runner,
-		Params:       req.Params,
+		Command:      req.Command,
 		Environments: req.EnvironmentsId,
 	}
 
@@ -106,9 +107,9 @@ func (service *ScriptService) StartExecution(req models.ExecuteScriptRequest) (*
 	}
 
 	// 优先使用前端传递的覆盖参数，否则回退到脚本存储值。
-	params := script.Params
-	if req.Params != nil {
-		params = req.Params
+	command := script.Command
+	if req.Command != nil {
+		command = req.Command
 	}
 	envIDs := script.Environments
 	if req.EnvironmentsId != nil {
@@ -121,12 +122,18 @@ func (service *ScriptService) StartExecution(req models.ExecuteScriptRequest) (*
 	}
 
 	//launch background script
-	process, err := executor.Start(context.Background(), script.Runner, params, script.WorkDir, env)
+	process, err := executor.Start(
+		context.Background(),
+		script.Name,
+		command,
+		script.WorkDir,
+		env,
+	)
 	if err != nil {
 		return nil, models.NewApiError(500, "start script fail", err.Error())
 	}
 
-	execution := models.NewExecution(utils.GenerateExecutionId(), script.ID, script.Name, params, envIDs, process)
+	execution := models.NewExecution(utils.GenerateExecutionId(), script.ID, script.Name, command, envIDs, process)
 	service.executions.add(execution)
 
 	go func() {
@@ -159,7 +166,7 @@ func (service *ScriptService) ListExecutions() (*models.Result, *models.ApiError
 			ScriptId:     e.ScriptID,
 			Name:         e.Name,
 			StartedAt:    e.StartedAt,
-			Params:       e.Params,
+			Command:      e.Command,
 			Environments: e.Environments,
 			Status:       e.Status(),
 			ExitCode:     e.ExitCode(),
@@ -193,48 +200,41 @@ func (service *ScriptService) resolveEnvironmentVars(ids []string) ([]string, *m
 	}
 
 	values := make(map[string]string)
-	applied := make(map[string]bool)
-	/*
-		在一个调用链重，一个envid不能同时出现两次，否则是链内循环，因而写stack。
-	*/
-	stack := make(map[string]bool)
+	paths := linkedhashset.New()
 
-	var visit func(id string, isTop bool) *models.ApiError
-	visit = func(id string, isTop bool) *models.ApiError {
-		if stack[id] {
-			return models.NewApiError(500, "environment cycle detected", id)
-		}
-		stack[id] = true
-		defer delete(stack, id)
-
+	for _, id := range ids {
 		environment, err := service.environmentService.getEnvironment(id)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return models.NewApiError(404, "environment not found", id)
+				return nil, models.NewApiError(404, "environment not found", id)
 			}
-			return models.NewApiError(500, "get environment fail", err.Error())
+			return nil, models.NewApiError(500, "get environment fail", err.Error())
 		}
 
-		for _, child := range environment.Children {
-			if apiErr := visit(child, false); apiErr != nil {
-				return apiErr
+		for _, p := range environment.Paths {
+			if p == "" {
+				continue
 			}
+			paths.Add(p)
 		}
 
-		if isTop || !applied[id] {
-			for _, item := range environment.Env {
-				values[item.Key] = item.Value
-			}
-			applied[id] = true
+		for _, item := range environment.Env {
+			values[item.Key] = item.Value
 		}
-
-		return nil
 	}
 
-	for _, id := range ids {
-		if apiErr := visit(id, true); apiErr != nil {
-			return nil, apiErr
+	if paths.Size() > 0 {
+		for key := range values {
+			if strings.EqualFold(key, "path") && key != "Path" {
+				delete(values, key)
+			}
 		}
+		rawPaths := paths.Values()
+		merged := make([]string, 0, len(rawPaths))
+		for _, p := range rawPaths {
+			merged = append(merged, p.(string))
+		}
+		values["Path"] = strings.Join(merged, ";")
 	}
 
 	keys := make([]string, 0, len(values))

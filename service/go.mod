@@ -4,10 +4,10 @@ go 1.26.6
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
+	github.com/emirpasic/gods v1.18.1
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.3
 	modernc.org/sqlite v1.57.0
 )
 

@@ -2,42 +2,31 @@ package main
 
 import (
 	"fmt"
-	"github/TheSilentNights/VeloScriptsManager/service/models"
-	"github/TheSilentNights/VeloScriptsManager/service/services"
-	"net/http"
 	"strings"
 	"time"
 
+	"github/TheSilentNights/VeloScriptsManager/service/configs"
+	"github/TheSilentNights/VeloScriptsManager/service/models"
+	"github/TheSilentNights/VeloScriptsManager/service/services"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 )
-
-var wsUpgrader = websocket.Upgrader{
-	// The management UI is served from a different origin (browser on a
-	// different port, or the Electron renderer); accept all origins.
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
 
 type Router struct {
 	scriptService      *services.ScriptService
 	environmentService *services.EnvironmentService
-	wsService          *services.WsService
 	serverController   *services.Server
 }
 
 func NewRouter(
 	scriptService *services.ScriptService,
 	environmentService *services.EnvironmentService,
-	wsService *services.WsService,
 	serverController *services.Server,
 ) *Router {
 	return &Router{
 		scriptService:      scriptService,
 		environmentService: environmentService,
-		wsService:          wsService,
 		serverController:   serverController,
 	}
 }
@@ -61,7 +50,6 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 
 	api := engine.Group("/api/v1/")
 	api.GET("/getStoredScripts", router.getStoredScripts)
-	api.GET("/execute/attach", router.attachExecution)
 	api.GET("/getEnvironments", router.getStoredEnvironments)
 	api.GET("/getExecutions", router.getExecutions)
 
@@ -70,9 +58,13 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	api.POST("/deleteScript", router.DeleteScript)
 	api.POST("/executeScript", router.ExecuteScript)
 	api.POST("/addEnvironment", router.AddEnvironment)
+	api.POST("/updateEnvironment", router.UpdateEnvironment)
 	api.POST("/deleteEnvironment", router.DeleteEnvironment)
 	api.POST("/deleteExecution", router.DeleteExecution)
 	api.POST("/stop", router.stopServer)
+
+	api.GET("/getConfig", router.getConfig)
+	api.POST("/updateConfig", router.updateConfig)
 }
 
 func (router *Router) getStatus(c *gin.Context) {
@@ -142,8 +134,7 @@ func (router *Router) UpdateScript(c *gin.Context) {
 }
 
 // ExecuteScript starts the script identified by the request id asynchronously
-// and returns the execution id immediately. The caller can then attach to the
-// running process stdio via GET /api/v1/execute/attach?executionId=...
+// and returns the execution id immediately.
 func (router *Router) ExecuteScript(c *gin.Context) {
 	var req models.ExecuteScriptRequest
 
@@ -168,44 +159,6 @@ func (router *Router) ExecuteScript(c *gin.Context) {
 		"scriptId":    execution.ScriptID,
 		"name":        execution.Name,
 	}))
-}
-
-// attachExecution upgrades the connection to a WebSocket and bridges it to the
-// stdio of a running execution.
-//
-// Server -> client frames (models.WsServerFrame):
-//
-//	{"type":"output","data":"<base64 chunk>","dropped":0}
-//	{"type":"exit","code":0,"error":""}
-//
-// The server sends ping control frames every wsPingPeriod; clients must reply
-// with pong (gorilla does this automatically). The server closes the socket
-// right after the exit frame.
-//
-// Client -> server frames (models.WsClientFrame):
-//
-//	{"type":"stdin","data":"<base64 bytes>"}
-//	{"type":"close_stdin"}
-//	{"type":"kill"}
-func (router *Router) attachExecution(c *gin.Context) {
-	executionId := c.Query("executionId")
-	if executionId == "" {
-		writeError(c, models.NewApiError(400, "invalid arguments", "executionId cannot be empty"))
-		return
-	}
-
-	execution, apiErr := router.scriptService.GetExecution(executionId)
-	if apiErr != nil {
-		writeError(c, apiErr)
-		return
-	}
-
-	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		return
-	}
-
-	router.wsService.StreamExecution(conn, execution)
 }
 
 func (router *Router) getStoredEnvironments(c *gin.Context) {
@@ -247,8 +200,44 @@ func (router *Router) AddEnvironment(c *gin.Context) {
 	writeResult(c, result)
 }
 
+func (router *Router) UpdateEnvironment(c *gin.Context) {
+	req := &models.UpdateEnvironmentRequest{}
+
+	if err := c.ShouldBind(&req); err != nil {
+		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
+		return
+	}
+
+	result, apiErr := router.environmentService.UpdateEnvironment(req)
+	if apiErr != nil {
+		writeError(c, apiErr)
+		return
+	}
+	writeResult(c, result)
+}
+
 func (router *Router) DeleteEnvironment(c *gin.Context) {
 	router.handleDelete(c, router.environmentService.DeleteEnvironment)
+}
+
+func (router *Router) getConfig(c *gin.Context) {
+	writeResult(c, models.NewResult(configs.GetConfig()))
+}
+
+func (router *Router) updateConfig(c *gin.Context) {
+	req := &configs.Config{}
+
+	if err := c.ShouldBind(&req); err != nil {
+		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
+		return
+	}
+
+	if err := configs.SetConfig(*req); err != nil {
+		writeError(c, models.NewApiError(500, "update config fail", err.Error()))
+		return
+	}
+
+	writeResult(c, models.NewResultWithMessage("config updated", nil))
 }
 
 func (router *Router) handleDelete(c *gin.Context, deleteFn func(id string) (*models.Result, *models.ApiError)) {

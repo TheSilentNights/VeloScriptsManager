@@ -18,7 +18,7 @@ func CreateEnvironmentRepo(db *sql.DB) *EnvironmentRepo {
 
 func (er *EnvironmentRepo) List() ([]Environment, error) {
 	query, args, err := squirrel.
-		Select("id", "name", "type", "path", "env", "children").
+		Select("id", "name", "paths", "env").
 		From("environments").
 		OrderBy("name").
 		ToSql()
@@ -51,7 +51,7 @@ func (er *EnvironmentRepo) List() ([]Environment, error) {
 
 func (er *EnvironmentRepo) Get(id string) (*Environment, error) {
 	query, args, err := squirrel.
-		Select("id", "name", "type", "path", "env", "children").
+		Select("id", "name", "paths", "env").
 		From("environments").
 		Where(squirrel.Eq{"id": id}).
 		ToSql()
@@ -64,20 +64,20 @@ func (er *EnvironmentRepo) Get(id string) (*Environment, error) {
 }
 
 func (er *EnvironmentRepo) Upsert(e Environment) error {
-	env, err := json.Marshal(e.Env)
+	paths, err := json.Marshal(e.Paths)
 	if err != nil {
 		return err
 	}
-	children, err := json.Marshal(e.Children)
+	env, err := json.Marshal(e.Env)
 	if err != nil {
 		return err
 	}
 
 	query, args, err := squirrel.
 		Insert("environments").
-		Columns("id", "name", "type", "path", "env", "children").
-		Values(e.ID, e.Name, e.Type, e.Path, string(env), string(children)).
-		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, type=excluded.type, path=excluded.path, env=excluded.env, children=excluded.children").
+		Columns("id", "name", "paths", "env").
+		Values(e.ID, e.Name, string(paths), string(env)).
+		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, paths=excluded.paths, env=excluded.env").
 		ToSql()
 	if err != nil {
 		return err
@@ -121,15 +121,15 @@ type scanner interface {
 
 func scanEnvironment(s scanner) (*Environment, error) {
 	var e Environment
+	var paths string
 	var env string
-	var children string
-	if err := s.Scan(&e.ID, &e.Name, &e.Type, &e.Path, &env, &children); err != nil {
+	if err := s.Scan(&e.ID, &e.Name, &paths, &env); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(paths), &e.Paths); err != nil {
 		return nil, err
 	}
 	if err := json.Unmarshal([]byte(env), &e.Env); err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal([]byte(children), &e.Children); err != nil {
 		return nil, err
 	}
 	return &e, nil

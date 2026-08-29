@@ -18,7 +18,7 @@ func CreateScriptRepo(db *sql.DB) *ScriptRepo {
 
 func (sr *ScriptRepo) List() ([]Script, error) {
 	query, args, err := squirrel.
-		Select("id", "name", "work_dir", "runner", "params", "environments").
+		Select("id", "name", "work_dir", "command", "environments").
 		From("scripts").
 		OrderBy("name").
 		ToSql()
@@ -41,12 +41,12 @@ func (sr *ScriptRepo) List() ([]Script, error) {
 	var out = make([]Script, 0)
 	for rows.Next() {
 		var s Script
-		var params string
+		var command string
 		var environments string
-		if err := rows.Scan(&s.ID, &s.Name, &s.WorkDir, &s.Runner, &params, &environments); err != nil {
+		if err := rows.Scan(&s.ID, &s.Name, &s.WorkDir, &command, &environments); err != nil {
 			return nil, err
 		}
-		if err := json.Unmarshal([]byte(params), &s.Params); err != nil {
+		if err := json.Unmarshal([]byte(command), &s.Command); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal([]byte(environments), &s.Environments); err != nil {
@@ -60,7 +60,7 @@ func (sr *ScriptRepo) List() ([]Script, error) {
 
 func (sr *ScriptRepo) Get(id string) (*Script, error) {
 	query, args, err := squirrel.
-		Select("id", "name", "work_dir", "runner", "params", "environments").
+		Select("id", "name", "work_dir", "command", "environments").
 		From("scripts").
 		Where(squirrel.Eq{"id": id}).
 		ToSql()
@@ -71,12 +71,12 @@ func (sr *ScriptRepo) Get(id string) (*Script, error) {
 	row := sr.db.QueryRow(query, args...)
 
 	var s Script
-	var params string
+	var command string
 	var environments string
-	if err := row.Scan(&s.ID, &s.Name, &s.WorkDir, &s.Runner, &params, &environments); err != nil {
+	if err := row.Scan(&s.ID, &s.Name, &s.WorkDir, &command, &environments); err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal([]byte(params), &s.Params); err != nil {
+	if err := json.Unmarshal([]byte(command), &s.Command); err != nil {
 		return nil, err
 	}
 	if err := json.Unmarshal([]byte(environments), &s.Environments); err != nil {
@@ -87,7 +87,7 @@ func (sr *ScriptRepo) Get(id string) (*Script, error) {
 }
 
 func (sr *ScriptRepo) Upsert(s Script) error {
-	params, err := json.Marshal(s.Params)
+	command, err := json.Marshal(s.Command)
 	if err != nil {
 		return err
 	}
@@ -98,9 +98,9 @@ func (sr *ScriptRepo) Upsert(s Script) error {
 
 	query, args, err := squirrel.
 		Insert("scripts").
-		Columns("id", "name", "work_dir", "runner", "params", "environments").
-		Values(s.ID, s.Name, s.WorkDir, s.Runner, string(params), string(environments)).
-		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, work_dir=excluded.work_dir, runner=excluded.runner, params=excluded.params, environments=excluded.environments").
+		Columns("id", "name", "work_dir", "command", "environments").
+		Values(s.ID, s.Name, s.WorkDir, string(command), string(environments)).
+		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, work_dir=excluded.work_dir, command=excluded.command, environments=excluded.environments").
 		ToSql()
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func (sr *ScriptRepo) Upsert(s Script) error {
 }
 
 func (sr *ScriptRepo) Update(s Script) error {
-	params, err := json.Marshal(s.Params)
+	command, err := json.Marshal(s.Command)
 	if err != nil {
 		return err
 	}
@@ -125,8 +125,7 @@ func (sr *ScriptRepo) Update(s Script) error {
 		Update("scripts").
 		Set("name", s.Name).
 		Set("work_dir", s.WorkDir).
-		Set("runner", s.Runner).
-		Set("params", string(params)).
+		Set("command", string(command)).
 		Set("environments", string(environments)).
 		Where(squirrel.Eq{"id": s.ID}).
 		ToSql()

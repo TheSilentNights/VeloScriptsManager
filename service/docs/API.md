@@ -21,7 +21,7 @@
 
 ```json
 { "id": "scr-xxx", "name": "build", "workDir": "C:\\repo",
-  "runner": "npm", "params": ["run","build"], "environments": ["env-id"] }
+  "command": ["npm","run","build"], "environments": ["env-id"] }
 ```
 
 ### POST /api/v1/addScript
@@ -29,8 +29,7 @@
 | --- | --- | --- | --- |
 | name | string | 是 | 脚本名称 |
 | workdir | string | 是 | 工作目录 |
-| runner | string | 是 | 可执行程序 |
-| params | string[] | 否 | 参数 |
+| command | string[] | 是 | 有序命令节点，第一个节点为程序 |
 | environmentsid | string[] | 否 | 应用的环境 ID 列表 |
 
 返回 `{ "code": 200, "message": "script added" }`。
@@ -51,14 +50,14 @@
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | id | string | 是 | 脚本 ID |
-| params | string[] | 否 | 覆盖脚本存储参数 |
+| command | string[] | 否 | 覆盖脚本存储命令节点 |
 | environmentsid | string[] | 否 | 覆盖脚本存储环境 ID |
 
 返回 `data`:
 ```json
 { "executionId": "uuid", "scriptId": "uuid", "name": "build" }
 ```
-启动前递归展开 environments（children 先应用、脚本列表靠后的覆盖靠前的；成环返回 `500 environment cycle detected`）。
+启动前合并 environments（列表靠后的覆盖靠前的同名变量；paths 去重后按序拼接到系统 PATH 前）。
 错误：`404 script not found` / `404 environment not found` / `500 start script fail`。
 
 ### GET /api/v1/getExecutions
@@ -76,41 +75,27 @@
 
 仍在运行的进程会先强制终止；返回 `message: "execution deleted"`；不存在 `404 execution not found`。
 
-### GET /api/v1/execute/attach?executionId=... （WebSocket）
-升级为 WebSocket 桥接进程 stdio。未知 ID 返回 `404 execution not found`。
-
-服务端 → 客户端：
-```json
-{ "type": "output", "data": "<base64>", "dropped": 0 }   // 输出块；dropped>0 表示此前有丢帧
-{ "type": "exit", "code": 0, "error": "" }                // 结束，随后关闭连接
-```
-客户端 → 服务端：
-```json
-{ "type": "stdin", "data": "<base64>" }
-{ "type": "close_stdin" }
-{ "type": "kill" }
-```
-服务端每 ~54s 发 ping，进程结束后发 `exit` 并关闭连接。
-
 ## 环境
 
 ### GET /api/v1/getEnvironments
 返回 `Environment[]`：
 ```json
-{ "id":"env-xxx","name":"node 20","type":"runtime","path":"C:\\nodejs",
-  "env":[{"key":"NODE_ENV","value":"production"}],"children":["env-yyy"] }
+{ "id":"env-xxx","name":"java 21",
+  "paths":["C:\\jdk-21\\bin"],
+  "env":[{"key":"JAVA_HOME","value":"C:\\jdk-21"}] }
 ```
 
 ### POST /api/v1/addEnvironment
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | name | string | 是 | 环境名称 |
-| type | string | 是 | 类型 |
-| path | string | 是 | 关联路径 |
-| env | `{key,value}[]` | 否 | 环境变量 |
-| children | string[] | 否 | 继承的环境 ID |
+| paths | string[] | 是 | 关联路径，执行时拼接到系统 PATH 前 |
+| env | `{key,value}[]` | 否 | 环境变量，按后覆盖前合并 |
 
 返回 `message: "environment added"`。
+
+### POST /api/v1/updateEnvironment
+同 addEnvironment，但 `id` 必填（json 字段 `id`）；返回 `message: "environment updated"`。环境不存在返回 `404 environment not found`。
 
 ### POST /api/v1/deleteEnvironment
 | 字段 | 类型 | 必填 |
@@ -118,3 +103,18 @@
 | id | string | 是 |
 
 返回 `message: "environment deleted"`；不存在 `404 environment not found`。
+
+## 设置
+
+### GET /api/v1/getConfig
+返回 `Config`：
+```json
+{ "fontSize": 14 }
+```
+
+### POST /api/v1/updateConfig
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| fontSize | int | 是 | 字体大小 |
+
+返回 `message: "config updated"`。

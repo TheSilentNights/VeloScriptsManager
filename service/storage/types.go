@@ -10,16 +10,13 @@ type Script struct {
 	ID           string   `json:"id"`
 	Name         string   `json:"name"`
 	WorkDir      string   `json:"workDir"`
-	Runner       string   `json:"runner"`
-	Params       []string `json:"params"`
+	Command      []string `json:"command"`
 	Environments []string `json:"environments"` // environment ids to apply before running
 }
 
 type Environment struct {
-	ID       string   `json:"id"`
-	Name     string   `json:"name"`
-	Type     string   `json:"type"`
-	Path     string   `json:"path"`
-	Env      []EnvVar `json:"env"`      // key-value pairs contributed by this env
-	Children []string `json:"children"` // ids of other environments to inherit from
+	ID    string   `json:"id"`
+	Name  string   `json:"name"`
+	Paths []string `json:"paths"` // directories prepended to PATH when this env is applied
+	Env   []EnvVar `json:"env"`   // key-value pairs contributed by this env
 }
