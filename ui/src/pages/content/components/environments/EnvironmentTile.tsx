@@ -37,10 +37,10 @@ export function EnvironmentTile({
     const handleDelete = async () => {
         try {
             await remove(environment.id);
-            message.success("已删除环境");
+            await message.success("已删除环境");
         } catch (e) {
             console.log(e)
-            message.error(`删除失败：${(e as Error).message}`);
+            await message.error(`删除失败：${(e as Error).message}`);
         }
     };
 
