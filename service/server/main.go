@@ -29,14 +29,19 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	if err := configs.InitConfig("./temp/config.json"); err != nil {
+	dataDir := "./temp"
+	if *release {
+		dataDir = "./data"
+	}
+
+	if err := configs.InitConfig(dataDir + "/config.json"); err != nil {
 		log.Println(err.Error())
 		return
 	}
 
 	r := gin.Default()
 
-	db, err := storage.OpenOrCreate("./temp/test_repo.db")
+	db, err := storage.OpenOrCreate(dataDir + "/test_repo.db")
 	if err != nil {
 		log.Println("failed to open database: " + err.Error())
 		return

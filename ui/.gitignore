@@ -25,3 +25,6 @@ dist-ssr
 
 design.md
 tmp
+
+resources/server.exe
+release

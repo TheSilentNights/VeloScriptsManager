@@ -26,4 +26,15 @@ await esbuild({
     minify: true,
   })
 
+console.log('Building Launcher...')
+await esbuild({
+    entryPoints: ['electron/launcher.ts'],
+    outfile: 'dist/electron/launcher.js',
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    external: ['electron'],
+    minify: true,
+})
+
 console.log('Build finished successfully!')

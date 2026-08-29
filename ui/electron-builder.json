@@ -1,0 +1,25 @@
+{
+  "appId": "com.thesilentnights.veloscriptsmanager",
+  "productName": "VeloScriptsManager",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "resources/server.exe",
+      "to": "server.exe"
+    }
+  ],
+  "win": {
+    "target": [
+      "nsis"
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
+  }
+}

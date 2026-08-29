@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "tsx scripts/launch_dev.ts",
     "build": "tsx scripts/build.ts",
-    "package:win": "yarn build && electron-builder --win",
-    "package:installer": "yarn package:win && tsx scripts/package.ts",
+    "build:server": "tsx scripts/build_server.ts",
+    "package:win": "yarn build && yarn build:server && electron-builder --win",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -23,12 +23,13 @@
     "@babel/core": "^7.29.7",
     "@rolldown/plugin-babel": "^0.2.3",
     "@types/babel__core": "^7.20.5",
-    "@types/node": "^24.13.3",
+    "@types/node": "26.4.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "babel-plugin-react-compiler": "^1.0.0",
     "electron": "43.4.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "0.28.2",
     "less": "4.9.0",
     "less-loader": "13.0.0",
