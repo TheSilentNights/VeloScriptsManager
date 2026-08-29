@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"log"
 	"net/http"
 	"time"
@@ -19,6 +20,13 @@ import (
 const serverShutdownTimeout = 10 * time.Second
 
 func main() {
+	release := flag.Bool("release", false, "run gin in release mode")
+	flag.Parse()
+
+	if *release {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	if err := configs.InitConfig("./temp/config.json"); err != nil {
 		log.Println(err.Error())
 		return

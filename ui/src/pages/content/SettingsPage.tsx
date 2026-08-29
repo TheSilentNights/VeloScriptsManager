@@ -1,12 +1,13 @@
 import {useEffect, useState} from "react";
-import {App, InputNumber, Spin, Typography} from "antd";
-import {LoadingOutlined} from "@ant-design/icons";
+import {App, Button, InputNumber, Spin, Typography} from "antd";
+import {LoadingOutlined, SaveOutlined} from "@ant-design/icons";
 import {fetchConfig, updateConfig} from "../../ts/api";
 
 export function SettingsPage() {
     const {message} = App.useApp();
     const [fontSize, setFontSize] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         fetchConfig()
@@ -21,16 +22,17 @@ export function SettingsPage() {
             });
     }, [message]);
 
-    const handleFontSizeChange = async (value: number | null) => {
-        if (value === null) return;
-        const previous = fontSize;
-        setFontSize(value);
+    const handleSave = async () => {
+        if (fontSize === null) return;
+        setSaving(true);
         try {
-            await updateConfig({fontSize: value});
+            await updateConfig({fontSize: fontSize});
+            message.success("已保存设置");
         } catch (e) {
             console.log(e);
-            setFontSize(previous);
             message.error(`保存失败：${(e as Error).message}`);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -48,9 +50,18 @@ export function SettingsPage() {
                             max={32}
                             step={1}
                             value={fontSize}
-                            onChange={handleFontSizeChange}
+                            onChange={(value) => setFontSize(value)}
                             disabled={loading}
                         />
+                        <Button
+                            type="primary"
+                            icon={<SaveOutlined/>}
+                            loading={saving}
+                            disabled={loading || fontSize === null}
+                            onClick={handleSave}
+                        >
+                            保存
+                        </Button>
                     </div>
                 </Spin>
             </div>

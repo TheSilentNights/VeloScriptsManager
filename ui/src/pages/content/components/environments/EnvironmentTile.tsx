@@ -27,10 +27,10 @@ export function EnvironmentTile({
     const handleUpdate = async (payload: EnvironmentPayload) => {
         try {
             await update(environment.id, payload);
-            message.success("已保存修改");
+            await message.success("已保存修改");
         } catch (e) {
             console.log(e)
-            message.error(`保存失败：${(e as Error).message}`);
+            await message.error(`保存失败：${(e as Error).message}`);
         }
     };
 
