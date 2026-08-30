@@ -14,6 +14,7 @@ import type {ScriptPayload} from "../../../../ts/api";
 interface ScriptEditorModalProps {
     open: boolean
     script: Script | null
+    prefill?: Script | null
     environments: Environment[]
     onCancel: () => void
     onSubmit: (payload: ScriptPayload) => Promise<void>
@@ -22,6 +23,7 @@ interface ScriptEditorModalProps {
 export function ScriptEditorModal({
     open,
     script,
+    prefill,
     environments,
     onCancel,
     onSubmit,
@@ -48,11 +50,18 @@ export function ScriptEditorModal({
                 command: script.command ?? [],
                 environments: script.environments ?? [],
             });
+        } else if (prefill) {
+            form.setFieldsValue({
+                name: prefill.name,
+                workDir: prefill.workDir,
+                command: prefill.command ?? [],
+                environments: prefill.environments ?? [],
+            });
         } else {
             form.resetFields();
             form.setFieldsValue({command: [], environments: []});
         }
-    }, [open, script, form]);
+    }, [open, script, prefill, form]);
 
     const handleOk = async () => {
         const values = await form.validateFields();
@@ -88,7 +97,14 @@ export function ScriptEditorModal({
                               command: script.command ?? [],
                               environments: script.environments ?? [],
                           }
-                        : {command: [], environments: []}
+                        : prefill
+                          ? {
+                                name: prefill.name,
+                                workDir: prefill.workDir,
+                                command: prefill.command ?? [],
+                                environments: prefill.environments ?? [],
+                            }
+                          : {command: [], environments: []}
                 }
             >
                 <Form.Item

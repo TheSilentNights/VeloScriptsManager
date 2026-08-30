@@ -15,6 +15,7 @@ import type {EnvironmentPayload} from "../../../../ts/api";
 interface EnvironmentEditorModalProps {
     open: boolean
     environment: Environment | null
+    prefill?: Environment | null
     onCancel: () => void
     onSubmit: (payload: EnvironmentPayload) => Promise<void>
 }
@@ -22,6 +23,7 @@ interface EnvironmentEditorModalProps {
 export function EnvironmentEditorModal({
     open,
     environment,
+    prefill,
     onCancel,
     onSubmit,
 }: EnvironmentEditorModalProps) {
@@ -36,11 +38,18 @@ export function EnvironmentEditorModal({
                 paths: environment.paths ?? [],
                 env: environment.env ?? [],
             });
+        } else if (prefill) {
+            form.resetFields();
+            form.setFieldsValue({
+                name: prefill.name,
+                paths: prefill.paths ?? [],
+                env: prefill.env ?? [],
+            });
         } else {
             form.resetFields();
             form.setFieldsValue({env: [], paths: []});
         }
-    }, [open, environment, form]);
+    }, [open, environment, prefill, form]);
 
     const handleOk = async () => {
         const values = await form.validateFields();
@@ -74,7 +83,13 @@ export function EnvironmentEditorModal({
                               paths: environment.paths ?? [],
                               env: environment.env ?? [],
                           }
-                        : {env: [], paths: []}
+                        : prefill
+                          ? {
+                                name: prefill.name,
+                                paths: prefill.paths ?? [],
+                                env: prefill.env ?? [],
+                            }
+                          : {env: [], paths: []}
                 }
             >
                 <Form.Item

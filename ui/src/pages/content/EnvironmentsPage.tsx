@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
-import {App, Button, Empty, Spin} from "antd";
-import {PlusOutlined, LoadingOutlined} from "@ant-design/icons";
+import {App, Button, Empty, Space, Spin} from "antd";
+import {PlusOutlined, LoadingOutlined, ReloadOutlined} from "@ant-design/icons";
 import {useEnvironmentStore} from "../../store/environmentStore";
 import type {EnvironmentPayload} from "../../ts/api";
 import {EnvironmentTile} from "./components/environments/EnvironmentTile";
@@ -32,13 +32,22 @@ export function EnvironmentsPage() {
     return (
         <div style={pageContainerStyle}>
             <div style={{display: "flex", justifyContent: "flex-end"}}>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined/>}
-                    onClick={() => setCreating(true)}
-                >
-                    新建环境
-                </Button>
+                <Space>
+                    <Button
+                        icon={<ReloadOutlined/>}
+                        loading={loading}
+                        onClick={() => load()}
+                    >
+                        刷新
+                    </Button>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined/>}
+                        onClick={() => setCreating(true)}
+                    >
+                        新建环境
+                    </Button>
+                </Space>
             </div>
 
             <Spin spinning={loading} indicator={<LoadingOutlined spin/>} size="large">

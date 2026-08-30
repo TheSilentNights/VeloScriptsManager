@@ -17,8 +17,8 @@ function checkPortAvailable(port: number): Promise<boolean> {
     })
 }
 
-export function getServerPort(): number | null {
-    return serverPort
+export function getServerPort(): number {
+    return serverPort ? serverPort: 19278
 }
 
 async function findAvailablePort(startPort: number): Promise<number> {

@@ -6,9 +6,11 @@ import {
     Popconfirm,
     Select,
     Space,
+    Tooltip,
     Typography,
 } from "antd";
 import {
+    CopyOutlined,
     DeleteOutlined,
     EditOutlined,
     PlayCircleOutlined,
@@ -37,12 +39,14 @@ function ScriptTileBody({script}: ScriptTileProps) {
     const {message} = App.useApp();
     const update = useScriptStore((s) => s.update);
     const remove = useScriptStore((s) => s.remove);
+    const add = useScriptStore((s) => s.add);
     const nameOf = useEnvironmentStore((s) => s.nameOf);
     const environments = useEnvironmentStore((s) => s.environments);
     const executions = useExecutionStore((s) => s.executions);
     const running = selectRunningCount(executions, script.id);
 
     const [editing, setEditing] = useState(false);
+    const [copying, setCopying] = useState(false);
     const [executing, setExecuting] = useState(false);
     const [enabledCommand, setEnabledCommand] = useState<string[]>(script.command);
     const [enabledEnvironments, setEnabledEnvironments] = useState<string[]>(
@@ -87,6 +91,17 @@ function ScriptTileBody({script}: ScriptTileProps) {
         }
     };
 
+    const handleCopy = async (payload: ScriptPayload) => {
+        try {
+            await add(payload);
+            message.success("已创建脚本");
+            setCopying(false);
+        } catch (e) {
+            console.log(e)
+            message.error(`创建失败：${(e as Error).message}`);
+        }
+    };
+
     return (
         <>
             <Card
@@ -98,12 +113,22 @@ function ScriptTileBody({script}: ScriptTileProps) {
                 }
                 extra={
                     <Space size={4}>
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<EditOutlined/>}
-                            onClick={() => setEditing(true)}
-                        />
+                        <Tooltip title="编辑脚本">
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined/>}
+                                onClick={() => setEditing(true)}
+                            />
+                        </Tooltip>
+                        <Tooltip title="复制脚本">
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<CopyOutlined/>}
+                                onClick={() => setCopying(true)}
+                            />
+                        </Tooltip>
                         <Popconfirm
                             title="删除脚本"
                             description="确定要删除该脚本吗？"
@@ -112,12 +137,14 @@ function ScriptTileBody({script}: ScriptTileProps) {
                             cancelText="取消"
                             onConfirm={handleDelete}
                         >
-                            <Button
-                                type="text"
-                                size="small"
-                                color="danger"
-                                icon={<DeleteOutlined/>}
-                            />
+                            <Tooltip title="删除脚本">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    color="danger"
+                                    icon={<DeleteOutlined/>}
+                                />
+                            </Tooltip>
                         </Popconfirm>
                     </Space>
                 }
@@ -204,6 +231,15 @@ function ScriptTileBody({script}: ScriptTileProps) {
                 environments={environments}
                 onCancel={() => setEditing(false)}
                 onSubmit={handleSave}
+            />
+
+            <ScriptEditorModal
+                open={copying}
+                script={null}
+                prefill={script}
+                environments={environments}
+                onCancel={() => setCopying(false)}
+                onSubmit={handleCopy}
             />
         </>
     );

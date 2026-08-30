@@ -5,10 +5,11 @@ import {
     Card,
     Popconfirm,
     Tag,
+    Tooltip,
     Typography,
     Space,
 } from "antd";
-import {DeleteOutlined, EditOutlined} from "@ant-design/icons";
+import {CopyOutlined, DeleteOutlined, EditOutlined} from "@ant-design/icons";
 import type {Environment} from "../../../../types/models";
 import {useEnvironmentStore} from "../../../../store/environmentStore";
 import type {EnvironmentPayload} from "../../../../ts/api";
@@ -22,7 +23,9 @@ export function EnvironmentTile({
     const {message} = App.useApp();
     const update = useEnvironmentStore((s) => s.update);
     const remove = useEnvironmentStore((s) => s.remove);
+    const add = useEnvironmentStore((s) => s.add);
     const [editing, setEditing] = useState(false);
+    const [copying, setCopying] = useState(false);
 
     const handleUpdate = async (payload: EnvironmentPayload) => {
         try {
@@ -44,6 +47,17 @@ export function EnvironmentTile({
         }
     };
 
+    const handleCopy = async (payload: EnvironmentPayload) => {
+        try {
+            await add(payload);
+            await message.success("已创建环境");
+            setCopying(false);
+        } catch (e) {
+            console.log(e)
+            await message.error(`创建失败：${(e as Error).message}`);
+        }
+    };
+
     return (
         <>
             <Card
@@ -55,12 +69,22 @@ export function EnvironmentTile({
                 }
                 extra={
                     <Space size={4}>
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<EditOutlined/>}
-                            onClick={() => setEditing(true)}
-                        />
+                        <Tooltip title="编辑环境">
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined/>}
+                                onClick={() => setEditing(true)}
+                            />
+                        </Tooltip>
+                        <Tooltip title="复制环境">
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<CopyOutlined/>}
+                                onClick={() => setCopying(true)}
+                            />
+                        </Tooltip>
                         <Popconfirm
                             title="删除环境"
                             description="确定要删除该环境吗？"
@@ -69,12 +93,14 @@ export function EnvironmentTile({
                             cancelText="取消"
                             onConfirm={handleDelete}
                         >
-                            <Button
-                                type="text"
-                                size="small"
-                                color="danger"
-                                icon={<DeleteOutlined/>}
-                            />
+                            <Tooltip title="删除环境">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    color="danger"
+                                    icon={<DeleteOutlined/>}
+                                />
+                            </Tooltip>
                         </Popconfirm>
                     </Space>
                 }
@@ -126,6 +152,14 @@ export function EnvironmentTile({
                     await handleUpdate(payload);
                     setEditing(false);
                 }}
+            />
+
+            <EnvironmentEditorModal
+                open={copying}
+                environment={null}
+                prefill={environment}
+                onCancel={() => setCopying(false)}
+                onSubmit={handleCopy}
             />
         </>
     );

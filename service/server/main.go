@@ -66,7 +66,7 @@ func main() {
 	router.RegisterRoutes(r)
 
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", *port),
+		Addr:    fmt.Sprintf("127.0.0.1:%d", *port),
 		Handler: r.Handler(),
 	}
 

@@ -35,7 +35,8 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 
 	engine.Use(cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
-			return origin == "http://localhost:5173" ||
+			return origin == "null" ||
+				origin == "http://localhost:5173" ||
 				origin == "http://127.0.0.1:5173" ||
 				strings.HasPrefix(origin, "http://127.0.0.1:")
 		},

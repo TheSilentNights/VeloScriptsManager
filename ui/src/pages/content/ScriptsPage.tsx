@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
-import {App, Button, Empty, Spin} from "antd";
-import {PlusOutlined,LoadingOutlined} from "@ant-design/icons";
+import {App, Button, Empty, Space, Spin} from "antd";
+import {PlusOutlined, LoadingOutlined, ReloadOutlined} from "@ant-design/icons";
 import {useScriptStore} from "../../store/scriptStore";
 import {useEnvironmentStore} from "../../store/environmentStore";
 import {useExecutionStore} from "../../store/executionStore";
@@ -40,13 +40,22 @@ export function ScriptsPage() {
     return (
         <div style={pageContainerStyle}>
             <div style={{display: "flex", justifyContent: "flex-end"}}>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined/>}
-                    onClick={() => setCreating(true)}
-                >
-                    新建脚本
-                </Button>
+                <Space>
+                    <Button
+                        icon={<ReloadOutlined/>}
+                        loading={loading}
+                        onClick={() => scriptStore()}
+                    >
+                        刷新
+                    </Button>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined/>}
+                        onClick={() => setCreating(true)}
+                    >
+                        新建脚本
+                    </Button>
+                </Space>
             </div>
 
             <Spin spinning={loading} indicator={<LoadingOutlined spin />} size={"large"}>

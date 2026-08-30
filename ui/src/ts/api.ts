@@ -7,7 +7,7 @@ const http = axios.create({
 
 let baseReady: Promise<void> | null = null;
 
-function initBase(): Promise<void> {
+export function initBase(): Promise<void> {
     if (!baseReady) {
         baseReady = (async () => {
             const port = await window.electronAPI.getServerPort();
@@ -37,6 +37,10 @@ async function sendGet<T>(path: string, config?:AxiosRequestConfig): Promise<T> 
     const body = res.data;
 
     console.log(body.message)
+
+    if (body.data === undefined || body.data === null) {
+        throw new Error(`unexpected response from ${path}: missing data field`);
+    }
 
     return body.data;
 }

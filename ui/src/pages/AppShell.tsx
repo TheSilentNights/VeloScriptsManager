@@ -1,5 +1,5 @@
 import {type CSSProperties, useEffect, useState} from "react";
-import {Layout, Menu, Typography, type MenuProps, Button} from "antd";
+import {Layout, Menu, Typography, type MenuProps, Button, Tooltip} from "antd";
 import {
     SettingOutlined,
     CodeOutlined,
@@ -102,43 +102,51 @@ function Header({collapsed, onCollapseChange}: { collapsed: boolean, onCollapseC
     return (
         <div style={headerStyle}>
             <div style={headerLeftStyle}>
-                <Button
-                    type="text"
-                    icon={collapsed ? <MenuUnfoldOutlined/> : <MenuFoldOutlined/>}
-                    onClick={() => onCollapseChange()}
-                    style={{
-                        fontSize: '16px',
-                        width: 16,
-                        height: 16,
-                        WebkitAppRegion: "no-drag",
-                    }}
-                ></Button>
+                <Tooltip title={collapsed ? "展开侧栏" : "折叠侧栏"}>
+                    <Button
+                        type="text"
+                        icon={collapsed ? <MenuUnfoldOutlined/> : <MenuFoldOutlined/>}
+                        onClick={() => onCollapseChange()}
+                        style={{
+                            fontSize: '16px',
+                            width: 16,
+                            height: 16,
+                            WebkitAppRegion: "no-drag",
+                        }}
+                    ></Button>
+                </Tooltip>
                 <Typography.Text style={{fontSize: 16, fontWeight: 700, color: "#111827"}}>
                     VeloScriptsManager
                 </Typography.Text>
             </div>
             <div style={windowControlsStyle}>
-                <button
-                    type="button"
-                    style={windowButtonStyle}
-                    onClick={() => window.electronAPI.minimizeWindow()}
-                >
-                    <MinusOutlined/>
-                </button>
-                <button
-                    type="button"
-                    style={windowButtonStyle}
-                    onClick={() => window.electronAPI.maximizeWindow()}
-                >
-                    {isMaximized ? <FullscreenExitOutlined/> : <BorderOutlined/>}
-                </button>
-                <button
-                    type="button"
-                    style={closeButtonStyle}
-                    onClick={() => window.electronAPI.closeWindow()}
-                >
-                    <CloseOutlined/>
-                </button>
+                <Tooltip title="最小化">
+                    <button
+                        type="button"
+                        style={windowButtonStyle}
+                        onClick={() => window.electronAPI.minimizeWindow()}
+                    >
+                        <MinusOutlined/>
+                    </button>
+                </Tooltip>
+                <Tooltip title={isMaximized ? "还原" : "最大化"}>
+                    <button
+                        type="button"
+                        style={windowButtonStyle}
+                        onClick={() => window.electronAPI.maximizeWindow()}
+                    >
+                        {isMaximized ? <FullscreenExitOutlined/> : <BorderOutlined/>}
+                    </button>
+                </Tooltip>
+                <Tooltip title="关闭">
+                    <button
+                        type="button"
+                        style={closeButtonStyle}
+                        onClick={() => window.electronAPI.closeWindow()}
+                    >
+                        <CloseOutlined/>
+                    </button>
+                </Tooltip>
             </div>
         </div>
     )
