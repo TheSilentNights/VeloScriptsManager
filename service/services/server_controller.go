@@ -1,19 +1,20 @@
 package services
 
 import (
+	"github/TheSilentNights/VeloScriptsManager/service/executor"
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
 	"sync"
 )
 
 type Server struct {
 	environmentRepo    *storage.EnvironmentRepo
-	executionManager   *ExecutionManager
+	executionManager   *executor.ExecutionManager
 	shutdownSignalChan chan struct{}
 	shutdownOnce       sync.Once
 }
 
 func NewServerController(
-	manager *ExecutionManager,
+	manager *executor.ExecutionManager,
 ) *Server {
 	return &Server{
 		executionManager:   manager,
@@ -30,7 +31,7 @@ func (service *Server) GetShutdownSignalChan() chan struct{} {
 // main goroutine to begin the graceful HTTP shutdown.
 func (service *Server) StopServer() {
 	service.shutdownOnce.Do(func() {
-		service.executionManager.killRunning()
+		service.executionManager.KillRunning()
 		close(service.GetShutdownSignalChan())
 	})
 }

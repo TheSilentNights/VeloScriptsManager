@@ -18,11 +18,11 @@ import (
 
 type ScriptService struct {
 	scriptRepo         *storage.ScriptRepo
-	executions         *ExecutionManager
+	executions         *executor.ExecutionManager
 	environmentService *EnvironmentService
 }
 
-func NewScriptService(scriptRepo *storage.ScriptRepo, manager *ExecutionManager, environmentService *EnvironmentService) *ScriptService {
+func NewScriptService(scriptRepo *storage.ScriptRepo, manager *executor.ExecutionManager, environmentService *EnvironmentService) *ScriptService {
 	return &ScriptService{
 		scriptRepo:         scriptRepo,
 		executions:         manager,
@@ -79,7 +79,7 @@ func (service *ScriptService) UpdateScript(req *models.UpdateScriptRequest) (*mo
 }
 
 func (service *ScriptService) DeleteScript(id string) (*models.Result, *models.ApiError) {
-	if execution, ok := service.executions.get(id); ok {
+	if execution, ok := service.executions.Get(id); ok {
 		if execution.Status() == "running" {
 			return nil, models.NewApiError(406, "script is running", execution)
 		}
@@ -134,7 +134,7 @@ func (service *ScriptService) StartExecution(req models.ExecuteScriptRequest) (*
 	}
 
 	execution := models.NewExecution(utils.GenerateExecutionId(), script.ID, script.Name, command, envIDs, process)
-	service.executions.add(execution)
+	service.executions.Add(execution)
 
 	go func() {
 		<-process.Done()
@@ -146,7 +146,7 @@ func (service *ScriptService) StartExecution(req models.ExecuteScriptRequest) (*
 
 // GetExecution returns the tracked execution by id, or a 404 when unknown.
 func (service *ScriptService) GetExecution(id string) (*models.Execution, *models.ApiError) {
-	execution, ok := service.executions.get(id)
+	execution, ok := service.executions.Get(id)
 	if !ok {
 		return nil, models.NewApiError(404, "execution not found", nil)
 	}
@@ -157,7 +157,7 @@ func (service *ScriptService) GetExecution(id string) (*models.Execution, *model
 // ordered by start time. Records persist after the process exits until they
 // are removed explicitly via DeleteExecution.
 func (service *ScriptService) ListExecutions() (*models.Result, *models.ApiError) {
-	executions := service.executions.list()
+	executions := service.executions.List()
 
 	list := make([]models.ExecutionStatusInfo, 0, len(executions))
 	for _, e := range executions {
@@ -180,7 +180,7 @@ func (service *ScriptService) ListExecutions() (*models.Result, *models.ApiError
 // DeleteExecution removes a tracked execution record by id. A still-running
 // process is killed first so its handle is never lost mid-flight.
 func (service *ScriptService) DeleteExecution(id string) (*models.Result, *models.ApiError) {
-	execution, ok := service.executions.get(id)
+	execution, ok := service.executions.Get(id)
 	if !ok {
 		return nil, models.NewApiError(404, "execution not found", id)
 	}
@@ -189,7 +189,7 @@ func (service *ScriptService) DeleteExecution(id string) (*models.Result, *model
 		_ = p.Kill()
 	}
 
-	service.executions.remove(id)
+	service.executions.Remove(id)
 	return models.NewResultWithMessage("execution deleted", nil), nil
 }
 

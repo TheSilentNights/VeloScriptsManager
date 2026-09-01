@@ -1,4 +1,4 @@
-package services
+package executor
 
 import (
 	"sync"
@@ -19,13 +19,13 @@ func NewExecutionManager() *ExecutionManager {
 	return &ExecutionManager{executions: linkedhashmap.New()}
 }
 
-func (m *ExecutionManager) add(execution *models.Execution) {
+func (m *ExecutionManager) Add(execution *models.Execution) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.executions.Put(execution.ID, execution)
 }
 
-func (m *ExecutionManager) get(id string) (*models.Execution, bool) {
+func (m *ExecutionManager) Get(id string) (*models.Execution, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	value, found := m.executions.Get(id)
@@ -35,14 +35,14 @@ func (m *ExecutionManager) get(id string) (*models.Execution, bool) {
 	return value.(*models.Execution), true
 }
 
-func (m *ExecutionManager) remove(id string) {
+func (m *ExecutionManager) Remove(id string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.executions.Remove(id)
 }
 
-// list returns every tracked execution ordered by start time.
-func (m *ExecutionManager) list() []*models.Execution {
+// List returns every tracked execution ordered by start time.
+func (m *ExecutionManager) List() []*models.Execution {
 	m.mu.Lock()
 	values := m.executions.Values()
 	out := make([]*models.Execution, 0, len(values))
@@ -53,8 +53,8 @@ func (m *ExecutionManager) list() []*models.Execution {
 	return out
 }
 
-// killRunning force-terminates every still-running tracked process.
-func (m *ExecutionManager) killRunning() {
+// KillRunning force-terminates every still-running tracked process.
+func (m *ExecutionManager) KillRunning() {
 	m.mu.Lock()
 	values := m.executions.Values()
 	executions := make([]*models.Execution, 0, len(values))
