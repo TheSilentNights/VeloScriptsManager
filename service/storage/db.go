@@ -3,7 +3,6 @@ package storage
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 
@@ -11,7 +10,6 @@ import (
 )
 
 // ErrNotFound reports that a row matching the requested id does not exist.
-var ErrNotFound = errors.New("record not found")
 
 func OpenOrCreate(dbPath string) (*sql.DB, error) {
 	connector, err := sqlite.NewConnector(fmt.Sprintf("file:%s", dbPath))

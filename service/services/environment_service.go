@@ -1,7 +1,9 @@
 package services
 
 import (
+	"database/sql"
 	"errors"
+	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
 
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
@@ -16,15 +18,15 @@ func NewEnvironmentService(environmentRepo *storage.EnvironmentRepo) *Environmen
 	return &EnvironmentService{environmentRepo: environmentRepo}
 }
 
-func (service *EnvironmentService) ListEnvironments() (*models.Result, *models.ApiError) {
+func (service *EnvironmentService) ListEnvironments() (any, error) {
 	list, err := service.environmentRepo.List()
 	if err != nil {
-		return nil, models.NewApiError(500, "list environments fail", err.Error())
+		return nil, ierrors.ListEnvironmentsError
 	}
-	return models.NewResult(list), nil
+	return list, nil
 }
 
-func (service *EnvironmentService) AddEnvironment(req *models.AddEnvironmentRequest) (*models.Result, *models.ApiError) {
+func (service *EnvironmentService) AddEnvironment(req *models.AddEnvironmentRequest) (any, error) {
 	environment := storage.Environment{
 		ID:    utils.GenerateEnvironmentId(),
 		Name:  req.Name,
@@ -32,24 +34,15 @@ func (service *EnvironmentService) AddEnvironment(req *models.AddEnvironmentRequ
 		Env:   req.Env,
 	}
 
-	if err := service.environmentRepo.Upsert(environment); err != nil {
-		return nil, models.NewApiError(500, "add environment fail", err.Error())
+	count, err := service.environmentRepo.Insert(environment)
+	if err != nil {
+		return nil, ierrors.AddEnvironmentDbError
 	}
 
-	return models.NewResultWithMessage("environment added", nil), nil
+	return count, nil
 }
 
-func (service *EnvironmentService) UpdateEnvironment(req *models.UpdateEnvironmentRequest) (*models.Result, *models.ApiError) {
-	if req.Id == "" {
-		return nil, models.NewApiError(400, "invalid arguments", "id cannot be empty")
-	}
-
-	if _, err := service.environmentRepo.Get(req.Id); err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
-			return nil, models.NewApiError(404, "environment not found", req.Id)
-		}
-		return nil, models.NewApiError(500, "get environment fail", err.Error())
-	}
+func (service *EnvironmentService) UpdateEnvironment(req *models.UpdateEnvironmentRequest) (any, error) {
 
 	environment := storage.Environment{
 		ID:    req.Id,
@@ -58,29 +51,31 @@ func (service *EnvironmentService) UpdateEnvironment(req *models.UpdateEnvironme
 		Env:   req.Env,
 	}
 
-	if err := service.environmentRepo.Upsert(environment); err != nil {
-		return nil, models.NewApiError(500, "update environment fail", err.Error())
+	count, err := service.environmentRepo.Update(environment)
+	if err != nil {
+		return nil, ierrors.UpdateEnvironmentDbError
 	}
 
-	return models.NewResultWithMessage("environment updated", nil), nil
+	return count, nil
 }
 
-func (service *EnvironmentService) DeleteEnvironment(id string) (*models.Result, *models.ApiError) {
-	if err := service.environmentRepo.Delete(id); err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
-			return nil, models.NewApiError(404, "environment not found", id)
-		}
-		return nil, models.NewApiError(500, "delete environment fail", err.Error())
+func (service *EnvironmentService) DeleteEnvironment(id string) (any, error) {
+	count, err := service.environmentRepo.Delete(id)
+	if err != nil {
+		return nil, ierrors.DeleteEnvironmentDbError
 	}
-	return models.NewResultWithMessage("environment deleted", nil), nil
+	return count, nil
 }
 
 func (service *EnvironmentService) getEnvironment(id string) (*storage.Environment, error) {
 	result, err := service.environmentRepo.Get(id)
 
 	if err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
-			return nil, err
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ierrors.EnvironmentNotFound
+		default:
+			return nil, ierrors.GetEnvironmentDbError
 		}
 	}
 

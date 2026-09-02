@@ -4,16 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/http"
+	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
 	"sort"
 	"strings"
-
-	"github.com/emirpasic/gods/sets/linkedhashset"
 
 	"github/TheSilentNights/VeloScriptsManager/service/executor"
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
+
+	"github.com/emirpasic/gods/sets/linkedhashset"
 )
 
 type ScriptService struct {
@@ -30,15 +30,15 @@ func NewScriptService(scriptRepo *storage.ScriptRepo, manager *executor.Executio
 	}
 }
 
-func (service *ScriptService) ListScripts() (*models.Result, *models.ApiError) {
+func (service *ScriptService) ListScripts() (any, error) {
 	list, err := service.scriptRepo.List()
 	if err != nil {
-		return nil, models.NewApiError(500, "db list error", err)
+		return nil, err
 	}
-	return models.NewResult(list), nil
+	return list, nil
 }
 
-func (service *ScriptService) AddScript(req *models.AddScriptRequest) (*models.Result, *models.ApiError) {
+func (service *ScriptService) AddScript(req *models.AddScriptRequest) (int64, error) {
 
 	script := storage.Script{
 		ID:           utils.GenerateScriptId(),
@@ -48,17 +48,16 @@ func (service *ScriptService) AddScript(req *models.AddScriptRequest) (*models.R
 		Environments: req.EnvironmentsId,
 	}
 
-	if err := service.scriptRepo.Upsert(script); err != nil {
-		return nil, models.NewApiError(500, "upsert script fail", err.Error())
+	count, err := service.scriptRepo.Upsert(script)
+
+	if err != nil {
+		return -1, errors.New("db add error")
 	}
 
-	return models.NewResultWithMessage("script added", nil), nil
+	return count, nil
 }
 
-func (service *ScriptService) UpdateScript(req *models.UpdateScriptRequest) (*models.Result, *models.ApiError) {
-	if req.Id == "" {
-		return nil, models.NewApiError(400, "invalid arguments", "id cannot be empty")
-	}
+func (service *ScriptService) UpdateScript(req *models.UpdateScriptRequest) (int64, error) {
 
 	script := storage.Script{
 		ID:           req.Id,
@@ -67,134 +66,140 @@ func (service *ScriptService) UpdateScript(req *models.UpdateScriptRequest) (*mo
 		Command:      req.Command,
 		Environments: req.EnvironmentsId,
 	}
+	count, err := service.scriptRepo.Upsert(script)
 
-	if err := service.scriptRepo.Update(script); err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
-			return nil, models.NewApiError(404, "script not found", req.Id)
-		}
-		return nil, models.NewApiError(500, "update script fail", err.Error())
+	if err != nil {
+		return -1, ierrors.UpdateScriptDbError
 	}
 
-	return models.NewResultWithMessage("script updated", nil), nil
+	return count, nil
 }
 
-func (service *ScriptService) DeleteScript(id string) (*models.Result, *models.ApiError) {
-	if execution, ok := service.executions.Get(id); ok {
-		if execution.Status() == "running" {
-			return nil, models.NewApiError(406, "script is running", execution)
+func (service *ScriptService) DeleteScript(id string) (int64, error) {
+
+	findExecutionByScriptId := func(scriptId string) *executor.Execution {
+		for _, e := range service.executions.List() {
+			if e.GetScriptInfo().ScriptID == scriptId {
+				return e
+			}
 		}
+		return nil
 	}
 
-	if err := service.scriptRepo.Delete(id); err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
-			return nil, models.NewApiError(404, "script not found", id)
-		}
-		return nil, models.NewApiError(500, "delete script fail", err.Error())
+	execution := findExecutionByScriptId(id)
+
+	if execution != nil && execution.GetStatus() == "running" {
+		return -1, ierrors.ScriptIsRunningError
 	}
-	return models.NewResultWithMessage("script deleted", nil), nil
+
+	count, err := service.scriptRepo.Delete(id)
+
+	if err != nil {
+		return -1, ierrors.DeleteScriptDbError
+	}
+
+	return count, nil
 }
 
-// StartExecution 加载脚本并执行。他会提供execution句柄，用作attach。
-// 执行时允许前端覆盖脚本存储的 Params / Environments：请求体里传了就使用传递的值，
-// 没传则回退到脚本自身存储的配置。
-func (service *ScriptService) StartExecution(req models.ExecuteScriptRequest) (*models.Execution, *models.ApiError) {
-	script, err := service.scriptRepo.Get(req.Id)
+func (service *ScriptService) MakeAndStartExecution(
+	id string,
+	command []string,
+	environmentsId []string,
+) (*executor.Execution, error) {
+	script, err := service.scriptRepo.Get(id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.NewApiError(404, "script not found", err.Error())
+			return nil, ierrors.ScriptNotFound
 		}
-		return nil, models.NewApiError(http.StatusNotFound, "get script fail", err.Error())
+		return nil, ierrors.GetScriptDbError
 	}
 
 	// 优先使用前端传递的覆盖参数，否则回退到脚本存储值。
-	command := script.Command
-	if req.Command != nil {
-		command = req.Command
-	}
-	envIDs := script.Environments
-	if req.EnvironmentsId != nil {
-		envIDs = req.EnvironmentsId
+	if command == nil {
+		command = script.Command
 	}
 
-	env, apiErr := service.resolveEnvironmentVars(envIDs)
+	if environmentsId == nil {
+		environmentsId = make([]string, 0)
+	}
+
+	env, apiErr := service.resolveEnvironmentVars(environmentsId)
 	if apiErr != nil {
 		return nil, apiErr
 	}
 
-	//launch background script
-	process, err := executor.Start(
-		context.Background(),
+	execution := executor.NewExecution(
+		script.ID,
 		script.Name,
 		command,
 		script.WorkDir,
 		env,
 	)
-	if err != nil {
-		return nil, models.NewApiError(500, "start script fail", err.Error())
+
+	startErr := execution.Start(context.Background())
+
+	if startErr != nil {
+		return nil, ierrors.ExecuteScriptError
 	}
 
-	execution := models.NewExecution(utils.GenerateExecutionId(), script.ID, script.Name, command, envIDs, process)
 	service.executions.Add(execution)
-
-	go func() {
-		<-process.Done()
-		execution.Finish(process.ExitCode(), process.Err())
-	}()
 
 	return execution, nil
 }
 
 // GetExecution returns the tracked execution by id, or a 404 when unknown.
-func (service *ScriptService) GetExecution(id string) (*models.Execution, *models.ApiError) {
+func (service *ScriptService) GetExecution(id string) (*executor.Execution, error) {
 	execution, ok := service.executions.Get(id)
 	if !ok {
-		return nil, models.NewApiError(404, "execution not found", nil)
+		return nil, ierrors.ExecutionNotFound
 	}
 	return execution, nil
 }
 
 // ListExecutions returns an id/status snapshot of every tracked execution,
 // ordered by start time. Records persist after the process exits until they
-// are removed explicitly via DeleteExecution.
-func (service *ScriptService) ListExecutions() (*models.Result, *models.ApiError) {
+// are removed explicitly via KillExecution.
+func (service *ScriptService) ListExecutions() (any, error) {
 	executions := service.executions.List()
 
 	list := make([]models.ExecutionStatusInfo, 0, len(executions))
 	for _, e := range executions {
 		list = append(list, models.ExecutionStatusInfo{
-			ExecutionId:  e.ID,
-			ScriptId:     e.ScriptID,
-			Name:         e.Name,
-			StartedAt:    e.StartedAt,
-			Command:      e.Command,
-			Environments: e.Environments,
-			Status:       e.Status(),
-			ExitCode:     e.ExitCode(),
-			Error:        e.Error(),
+			ExecutionId:  e.GetExecutionId(),
+			ScriptId:     e.GetScriptInfo().ScriptID,
+			Name:         e.GetScriptInfo().Name,
+			StartedAt:    e.GetScriptInfo().StartedAt,
+			Command:      e.GetScriptInfo().Command,
+			Environments: e.GetScriptInfo().Environments,
+			Status:       e.GetStatus(),
+			ExitCode:     e.GetExitCode(),
+			Error:        e.GetError(),
 		})
 	}
 
-	return models.NewResult(list), nil
+	return list, nil
 }
 
-// DeleteExecution removes a tracked execution record by id. A still-running
+// KillExecution removes a tracked execution record by id. A still-running
 // process is killed first so its handle is never lost mid-flight.
-func (service *ScriptService) DeleteExecution(id string) (*models.Result, *models.ApiError) {
+func (service *ScriptService) KillExecution(id string) (any, error) {
 	execution, ok := service.executions.Get(id)
 	if !ok {
-		return nil, models.NewApiError(404, "execution not found", id)
+		return nil, ierrors.ExecutionNotFound
 	}
 
-	if p := execution.Process(); p != nil {
-		_ = p.Kill()
-	}
+	killErr := execution.Kill()
 
+	if killErr != nil {
+		return nil, killErr
+	}
 	service.executions.Remove(id)
-	return models.NewResultWithMessage("execution deleted", nil), nil
+	return "execution deleted", nil
 }
 
 // resolveEnvironmentVars 展平所有的链式依赖，列表后续的 env 可以覆盖前面的同名变量。
-func (service *ScriptService) resolveEnvironmentVars(ids []string) ([]string, *models.ApiError) {
+// gen by ai
+func (service *ScriptService) resolveEnvironmentVars(ids []string) ([]string, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -204,11 +209,9 @@ func (service *ScriptService) resolveEnvironmentVars(ids []string) ([]string, *m
 
 	for _, id := range ids {
 		environment, err := service.environmentService.getEnvironment(id)
+
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, models.NewApiError(404, "environment not found", id)
-			}
-			return nil, models.NewApiError(500, "get environment fail", err.Error())
+			return nil, err
 		}
 
 		for _, p := range environment.Paths {

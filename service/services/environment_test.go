@@ -1,21 +1,37 @@
 package services
 
 import (
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github/TheSilentNights/VeloScriptsManager/service/executor"
+	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
+	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
 )
 
-func newTestService(t *testing.T) *Server {
+func newEnvTestService(t *testing.T) (*ScriptService, *storage.EnvironmentRepo) {
 	t.Helper()
 	db, err := storage.OpenOrCreate(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewServerController(storage.CreateScriptRepo(db), storage.CreateEnvironmentRepo(db))
+
+	environmentRepo := storage.CreateEnvironmentRepo(db)
+	scriptRepo := storage.CreateScriptRepo(db)
+	environmentService := NewEnvironmentService(environmentRepo)
+	scriptService := NewScriptService(scriptRepo, executor.NewExecutionManager(), environmentService)
+	return scriptService, environmentRepo
+}
+
+func mustInsertEnvironment(t *testing.T, repo *storage.EnvironmentRepo, environment storage.Environment) {
+	t.Helper()
+	if _, err := repo.Insert(environment); err != nil {
+		t.Fatalf("insert environment %q: %v", environment.ID, err)
+	}
 }
 
 func envAsMap(env []string) map[string]string {
@@ -30,10 +46,19 @@ func envAsMap(env []string) map[string]string {
 }
 
 func TestResolveEnvironmentVars(t *testing.T) {
-	service := newTestService(t)
+	service, repo := newEnvTestService(t)
 
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "A", Name: "A", Env: []storage.EnvVar{{Key: "K1", Value: "v1"}, {Key: "K2", Value: "v2"}}, Paths: []string{`C:\jdk\bin`}})
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "B", Name: "B", Env: []storage.EnvVar{{Key: "K1", Value: "override"}}})
+	mustInsertEnvironment(t, repo, storage.Environment{
+		ID:    "A",
+		Name:  "A",
+		Env:   []storage.EnvVar{{Key: "K1", Value: "v1"}, {Key: "K2", Value: "v2"}},
+		Paths: []string{`C:\jdk\bin`},
+	})
+	mustInsertEnvironment(t, repo, storage.Environment{
+		ID:   "B",
+		Name: "B",
+		Env:  []storage.EnvVar{{Key: "K1", Value: "override"}},
+	})
 
 	env, apiErr := service.resolveEnvironmentVars([]string{"A", "B"})
 	if apiErr != nil {
@@ -55,10 +80,20 @@ func TestResolveEnvironmentVars(t *testing.T) {
 // TestResolveEnvironmentVarsLaterWins checks that an environment listed later
 // overrides an earlier one, and its paths are appended after existing ones.
 func TestResolveEnvironmentVarsLaterWins(t *testing.T) {
-	service := newTestService(t)
+	service, repo := newEnvTestService(t)
 
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "C", Name: "C", Env: []storage.EnvVar{{Key: "K", Value: "first"}}, Paths: []string{`C:\a`}})
-	_ = service.environmentRepo.Upsert(storage.Environment{ID: "P", Name: "P", Env: []storage.EnvVar{{Key: "K", Value: "second"}}, Paths: []string{`C:\b`, `C:\a`}})
+	mustInsertEnvironment(t, repo, storage.Environment{
+		ID:    "C",
+		Name:  "C",
+		Env:   []storage.EnvVar{{Key: "K", Value: "first"}},
+		Paths: []string{`C:\a`},
+	})
+	mustInsertEnvironment(t, repo, storage.Environment{
+		ID:    "P",
+		Name:  "P",
+		Env:   []storage.EnvVar{{Key: "K", Value: "second"}},
+		Paths: []string{`C:\b`, `C:\a`},
+	})
 
 	env, apiErr := service.resolveEnvironmentVars([]string{"C", "P"})
 	if apiErr != nil {
@@ -74,11 +109,82 @@ func TestResolveEnvironmentVarsLaterWins(t *testing.T) {
 	}
 }
 
+func TestResolveEnvironmentVarsEmpty(t *testing.T) {
+	service, _ := newEnvTestService(t)
+
+	env, apiErr := service.resolveEnvironmentVars(nil)
+	if apiErr != nil {
+		t.Fatalf("unexpected error: %v", apiErr)
+	}
+	if len(env) != 0 {
+		t.Fatalf("expected no vars for empty id list, got %v", env)
+	}
+}
+
 func TestResolveEnvironmentVarsMissing(t *testing.T) {
-	service := newTestService(t)
+	service, _ := newEnvTestService(t)
 
 	_, apiErr := service.resolveEnvironmentVars([]string{"does-not-exist"})
-	if apiErr == nil || apiErr.Code != 404 {
-		t.Fatalf("expected 404 for missing environment, got %+v", apiErr)
+	if !errors.Is(apiErr, ierrors.EnvironmentNotFound) {
+		t.Fatalf("expected EnvironmentNotFound, got %v", apiErr)
+	}
+}
+
+func TestEnvironmentServiceCrud(t *testing.T) {
+	_, repo := newEnvTestService(t)
+	service := NewEnvironmentService(repo)
+
+	count, apiErr := service.AddEnvironment(&models.AddEnvironmentRequest{
+		Name:  "JDK",
+		Paths: []string{`C:\jdk\bin`},
+		Env:   []storage.EnvVar{{Key: "JAVA_HOME", Value: `C:\jdk`}},
+	})
+	if apiErr != nil {
+		t.Fatalf("add environment failed: %v", apiErr)
+	}
+	if count != int64(1) {
+		t.Fatalf("expected 1 row affected, got %v", count)
+	}
+
+	list, apiErr := service.ListEnvironments()
+	if apiErr != nil {
+		t.Fatalf("list environments failed: %v", apiErr)
+	}
+	environments, ok := list.([]storage.Environment)
+	if !ok || len(environments) != 1 {
+		t.Fatalf("expected 1 environment, got %#v", list)
+	}
+	if environments[0].Name != "JDK" || len(environments[0].Paths) != 1 || len(environments[0].Env) != 1 {
+		t.Fatalf("unexpected stored environment: %#v", environments[0])
+	}
+
+	id := environments[0].ID
+	updated, apiErr := service.UpdateEnvironment(&models.UpdateEnvironmentRequest{
+		Id:    id,
+		Name:  "JDK2",
+		Paths: []string{`C:\jdk2\bin`},
+		Env:   []storage.EnvVar{{Key: "JAVA_HOME", Value: `C:\jdk2`}},
+	})
+	if apiErr != nil {
+		t.Fatalf("update environment failed: %v", apiErr)
+	}
+	if updated != int64(1) {
+		t.Fatalf("expected 1 row affected, got %v", updated)
+	}
+
+	deleted, apiErr := service.DeleteEnvironment(id)
+	if apiErr != nil {
+		t.Fatalf("delete environment failed: %v", apiErr)
+	}
+	if deleted != int64(1) {
+		t.Fatalf("expected 1 row affected, got %v", deleted)
+	}
+
+	list, apiErr = service.ListEnvironments()
+	if apiErr != nil {
+		t.Fatalf("list environments failed: %v", apiErr)
+	}
+	if environments, ok := list.([]storage.Environment); !ok || len(environments) != 0 {
+		t.Fatalf("expected 0 environments after delete, got %#v", list)
 	}
 }

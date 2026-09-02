@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github/TheSilentNights/VeloScriptsManager/service/executor"
 	"log"
 	"net/http"
 	"time"
@@ -49,7 +50,7 @@ func main() {
 
 	scriptRepo := storage.CreateScriptRepo(db)
 	environmentRepo := storage.CreateEnvironmentRepo(db)
-	executionManager := services.NewExecutionManager()
+	executionManager := executor.NewExecutionManager()
 
 	serverController := services.NewServerController(
 		executionManager,

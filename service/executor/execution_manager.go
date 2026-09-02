@@ -4,8 +4,6 @@ import (
 	"sync"
 
 	"github.com/emirpasic/gods/maps/linkedhashmap"
-
-	"github/TheSilentNights/VeloScriptsManager/service/models"
 )
 
 // ExecutionManager keeps track of live (and recently finished) executions so
@@ -19,20 +17,20 @@ func NewExecutionManager() *ExecutionManager {
 	return &ExecutionManager{executions: linkedhashmap.New()}
 }
 
-func (m *ExecutionManager) Add(execution *models.Execution) {
+func (m *ExecutionManager) Add(execution *Execution) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.executions.Put(execution.ID, execution)
+	m.executions.Put(execution.executionId, execution)
 }
 
-func (m *ExecutionManager) Get(id string) (*models.Execution, bool) {
+func (m *ExecutionManager) Get(id string) (*Execution, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	value, found := m.executions.Get(id)
 	if !found {
 		return nil, false
 	}
-	return value.(*models.Execution), true
+	return value.(*Execution), true
 }
 
 func (m *ExecutionManager) Remove(id string) {
@@ -42,12 +40,12 @@ func (m *ExecutionManager) Remove(id string) {
 }
 
 // List returns every tracked execution ordered by start time.
-func (m *ExecutionManager) List() []*models.Execution {
+func (m *ExecutionManager) List() []*Execution {
 	m.mu.Lock()
 	values := m.executions.Values()
-	out := make([]*models.Execution, 0, len(values))
+	out := make([]*Execution, 0, len(values))
 	for _, v := range values {
-		out = append(out, v.(*models.Execution))
+		out = append(out, v.(*Execution))
 	}
 	m.mu.Unlock()
 	return out
@@ -57,15 +55,13 @@ func (m *ExecutionManager) List() []*models.Execution {
 func (m *ExecutionManager) KillRunning() {
 	m.mu.Lock()
 	values := m.executions.Values()
-	executions := make([]*models.Execution, 0, len(values))
+	executions := make([]*Execution, 0, len(values))
 	for _, v := range values {
-		executions = append(executions, v.(*models.Execution))
+		executions = append(executions, v.(*Execution))
 	}
 	m.mu.Unlock()
 
 	for _, e := range executions {
-		if p := e.Process(); p != nil {
-			_ = p.Kill()
-		}
+		_ = e.Kill()
 	}
 }

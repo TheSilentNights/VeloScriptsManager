@@ -86,14 +86,14 @@ func (sr *ScriptRepo) Get(id string) (*Script, error) {
 	return &s, nil
 }
 
-func (sr *ScriptRepo) Upsert(s Script) error {
+func (sr *ScriptRepo) Upsert(s Script) (int64, error) {
 	command, err := json.Marshal(s.Command)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	environments, err := json.Marshal(s.Environments)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	query, args, err := squirrel.
@@ -102,74 +102,43 @@ func (sr *ScriptRepo) Upsert(s Script) error {
 		Values(s.ID, s.Name, s.WorkDir, string(command), string(environments)).
 		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, work_dir=excluded.work_dir, command=excluded.command, environments=excluded.environments").
 		ToSql()
+
 	if err != nil {
-		return err
+		return -1, err
 	}
 
-	_, err = sr.db.Exec(query, args...)
+	result, errExec := sr.db.Exec(query, args...)
 
-	return err
+	if errExec != nil {
+		return -1, errExec
+	}
+
+	affected, errEffect := result.RowsAffected()
+	if errEffect != nil {
+		return -1, errEffect
+	}
+
+	return affected, nil
 }
 
-func (sr *ScriptRepo) Update(s Script) error {
-	command, err := json.Marshal(s.Command)
-	if err != nil {
-		return err
-	}
-	environments, err := json.Marshal(s.Environments)
-	if err != nil {
-		return err
-	}
-
-	query, args, err := squirrel.
-		Update("scripts").
-		Set("name", s.Name).
-		Set("work_dir", s.WorkDir).
-		Set("command", string(command)).
-		Set("environments", string(environments)).
-		Where(squirrel.Eq{"id": s.ID}).
-		ToSql()
-	if err != nil {
-		return err
-	}
-
-	result, err := sr.db.Exec(query, args...)
-	if err != nil {
-		return err
-	}
-
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if affected == 0 {
-		return ErrNotFound
-	}
-
-	return nil
-}
-
-func (sr *ScriptRepo) Delete(id string) error {
+func (sr *ScriptRepo) Delete(id string) (int64, error) {
 	query, args, err := squirrel.
 		Delete("scripts").
 		Where(squirrel.Eq{"id": id}).
 		ToSql()
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	result, err := sr.db.Exec(query, args...)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return err
-	}
-	if affected == 0 {
-		return ErrNotFound
+		return -1, err
 	}
 
-	return nil
+	return affected, nil
 }

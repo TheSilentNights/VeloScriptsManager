@@ -25,7 +25,7 @@ type UpdateEnvironmentRequest struct {
 type UpdateScriptRequest struct {
 	Id             string   `form:"id" json:"id"`
 	Name           string   `form:"name" json:"name"`
-	WorkDir        string   `form:"workdir" json:"workdir"`
+	WorkDir        string   `form:"workDir" json:"workDir"`
 	Command        []string `form:"command" json:"command"`
 	EnvironmentsId []string `form:"environmentsid" json:"environmentsid"` // environment ids to apply
 }

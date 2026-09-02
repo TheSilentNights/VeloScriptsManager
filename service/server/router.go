@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"errors"
+	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
 	"strings"
 	"time"
 
@@ -61,7 +62,7 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	api.POST("/addEnvironment", router.AddEnvironment)
 	api.POST("/updateEnvironment", router.UpdateEnvironment)
 	api.POST("/deleteEnvironment", router.DeleteEnvironment)
-	api.POST("/deleteExecution", router.DeleteExecution)
+	api.POST("/deleteExecution", router.killExecution)
 	api.POST("/stop", router.stopServer)
 
 	api.GET("/getConfig", router.getConfig)
@@ -81,57 +82,134 @@ func (router *Router) stopServer(c *gin.Context) {
 	})
 }
 
-func writeResult(c *gin.Context, result *models.Result) {
-	c.JSON(result.Code, result)
-}
-
-func writeError(c *gin.Context, apiErr *models.ApiError) {
-	c.JSON(apiErr.Code, apiErr)
-}
-
 func (router *Router) getStoredScripts(c *gin.Context) {
 	result, apiErr := router.scriptService.ListScripts()
+
 	if apiErr != nil {
-		writeError(c, apiErr)
+		c.JSON(500, gin.H{
+			"message": "list scripts failed",
+			"data":    apiErr.Error(),
+		})
 		return
 	}
-	writeResult(c, result)
+
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    result,
+	})
 }
 
 func (router *Router) AddScript(c *gin.Context) {
 	req := &models.AddScriptRequest{}
 
 	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    err.Error(),
+		})
 		return
 	}
 
 	result, apiErr := router.scriptService.AddScript(req)
 	if apiErr != nil {
-		writeError(c, apiErr)
+		c.JSON(500, gin.H{
+			"message": "add script failed",
+			"data":    apiErr.Error(),
+		})
 		return
 	}
-	writeResult(c, result)
+
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    result,
+	})
 }
 
 func (router *Router) DeleteScript(c *gin.Context) {
-	router.handleDelete(c, router.scriptService.DeleteScript)
+	var req models.DeleteRequest
+
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	if req.Id == "" {
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+		})
+		return
+	}
+
+	count, apiErr := router.scriptService.DeleteScript(req.Id)
+	if apiErr != nil {
+		switch {
+		case errors.Is(apiErr, ierrors.ScriptIsRunningError):
+			c.JSON(400, gin.H{
+				"message": "script is running",
+				"data":    apiErr.Error(),
+			})
+		case errors.Is(apiErr, ierrors.DeleteScriptDbError):
+			c.JSON(500, gin.H{
+				"message": "delete script failed",
+				"data":    apiErr.Error(),
+			})
+
+		default:
+			c.JSON(500, gin.H{
+				"message": "delete script failed",
+				"data":    apiErr.Error(),
+			})
+		}
+		return
+	}
+
+	if count == 0 {
+		c.JSON(404, gin.H{
+			"message": "script not found",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    req,
+	})
 }
 
 func (router *Router) UpdateScript(c *gin.Context) {
 	req := &models.UpdateScriptRequest{}
 
 	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    err.Error(),
+		})
 		return
 	}
 
-	result, apiErr := router.scriptService.UpdateScript(req)
+	count, apiErr := router.scriptService.UpdateScript(req)
 	if apiErr != nil {
-		writeError(c, apiErr)
+		c.JSON(500, gin.H{
+			"message": "update script failed",
+			"data":    apiErr.Error(),
+		})
 		return
 	}
-	writeResult(c, result)
+
+	if count == 0 {
+		c.JSON(404, gin.H{
+			"message": "script not found",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    req,
+	})
 }
 
 // ExecuteScript starts the script identified by the request id asynchronously
@@ -140,124 +218,230 @@ func (router *Router) ExecuteScript(c *gin.Context) {
 	var req models.ExecuteScriptRequest
 
 	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    err.Error(),
+		})
 		return
 	}
 
 	if req.Id == "" {
-		writeError(c, models.NewApiError(400, "invalid arguments", "id cannot be empty"))
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    req,
+		})
 		return
 	}
 
-	execution, apiErr := router.scriptService.StartExecution(req)
+	execution, apiErr := router.scriptService.MakeAndStartExecution(
+		req.Id,
+		req.Command,
+		req.EnvironmentsId,
+	)
+
 	if apiErr != nil {
-		writeError(c, apiErr)
+		c.JSON(500, gin.H{
+			"message": "execute script failed",
+			"data":    apiErr.Error(),
+		})
 		return
 	}
 
-	writeResult(c, models.NewResultWithMessage("script started", gin.H{
-		"executionId": execution.ID,
-		"scriptId":    execution.ScriptID,
-		"name":        execution.Name,
-	}))
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data": gin.H{
+			"executionId": execution.GetExecutionId(),
+			"scriptId":    execution.GetScriptInfo().ScriptID,
+			"name":        execution.GetScriptInfo().Name,
+		},
+	})
 }
 
 func (router *Router) getStoredEnvironments(c *gin.Context) {
 	result, apiErr := router.environmentService.ListEnvironments()
 	if apiErr != nil {
-		writeError(c, apiErr)
+		c.JSON(500, gin.H{
+			"message": "list environments failed",
+			"data":    apiErr.Error(),
+		})
 		return
 	}
-	writeResult(c, result)
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    result,
+	})
+
 }
 
 // getExecutions returns the id/status snapshot of all tracked executions.
 func (router *Router) getExecutions(c *gin.Context) {
 	result, apiErr := router.scriptService.ListExecutions()
 	if apiErr != nil {
-		writeError(c, apiErr)
+		c.JSON(500, gin.H{
+			"message": "list executions failed",
+			"data":    apiErr.Error(),
+		})
 		return
 	}
-	writeResult(c, result)
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    result,
+	})
+
 }
 
-func (router *Router) DeleteExecution(c *gin.Context) {
-	router.handleDelete(c, router.scriptService.DeleteExecution)
+func (router *Router) killExecution(c *gin.Context) {
+	req := &models.DeleteRequest{}
+
+	if err := c.ShouldBind(req); err != nil {
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	if len(req.Id) == 0 {
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+		})
+		return
+	}
+
+	execution, err := router.scriptService.KillExecution(req.Id)
+	if err != nil {
+		c.JSON(500, gin.H{
+			"message": "kill execution failed",
+			"data":    err.Error(),
+		})
+		return
+	}
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    execution,
+	})
+
 }
 
 func (router *Router) AddEnvironment(c *gin.Context) {
 	req := &models.AddEnvironmentRequest{}
 
 	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    err.Error(),
+		})
 		return
 	}
 
-	result, apiErr := router.environmentService.AddEnvironment(req)
-	if apiErr != nil {
-		writeError(c, apiErr)
+	if len(req.Name) == 0 {
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+		})
 		return
 	}
-	writeResult(c, result)
+
+	count, apiErr := router.environmentService.AddEnvironment(req)
+	if apiErr != nil {
+		c.JSON(500, gin.H{
+			"message": "add environment failed",
+			"data":    apiErr.Error(),
+		})
+		return
+	}
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    count,
+	})
 }
 
 func (router *Router) UpdateEnvironment(c *gin.Context) {
 	req := &models.UpdateEnvironmentRequest{}
-
 	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    err.Error(),
+		})
 		return
 	}
 
 	result, apiErr := router.environmentService.UpdateEnvironment(req)
 	if apiErr != nil {
-		writeError(c, apiErr)
+		c.JSON(500, gin.H{
+			"message": "update environment failed",
+			"data":    apiErr.Error(),
+		})
 		return
 	}
-	writeResult(c, result)
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    result,
+	})
 }
 
 func (router *Router) DeleteEnvironment(c *gin.Context) {
-	router.handleDelete(c, router.environmentService.DeleteEnvironment)
+	req := &models.DeleteRequest{}
+
+	if err := c.ShouldBind(req); err != nil {
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	if len(req.Id) == 0 {
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    req,
+		})
+		return
+	}
+
+	execution, apiErr := router.environmentService.DeleteEnvironment(req.Id)
+
+	if apiErr != nil {
+		c.JSON(500, gin.H{
+			"message": "delete environment failed",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    execution,
+	})
+
 }
 
 func (router *Router) getConfig(c *gin.Context) {
-	writeResult(c, models.NewResult(configs.GetConfig()))
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    configs.GetConfig(),
+	})
 }
 
 func (router *Router) updateConfig(c *gin.Context) {
 	req := &configs.Config{}
-
 	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    err.Error(),
+		})
 		return
 	}
 
-	if err := configs.SetConfig(*req); err != nil {
-		writeError(c, models.NewApiError(500, "update config fail", err.Error()))
+	err := configs.SetConfig(*req)
+	if err != nil {
+		c.JSON(500, gin.H{
+			"message": "update config failed",
+			"data":    err.Error(),
+		})
 		return
 	}
 
-	writeResult(c, models.NewResultWithMessage("config updated", nil))
-}
-
-func (router *Router) handleDelete(c *gin.Context, deleteFn func(id string) (*models.Result, *models.ApiError)) {
-	var req models.DeleteRequest
-
-	if err := c.ShouldBind(&req); err != nil {
-		writeError(c, models.NewApiError(400, "invalid arguments", err.Error()))
-		return
-	}
-
-	if req.Id == "" {
-		writeError(c, models.NewApiError(400, "invalid arguments", fmt.Sprintf("id cannot be empty")))
-		return
-	}
-
-	result, apiErr := deleteFn(req.Id)
-	if apiErr != nil {
-		writeError(c, apiErr)
-		return
-	}
-	writeResult(c, result)
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    req,
+	})
 }

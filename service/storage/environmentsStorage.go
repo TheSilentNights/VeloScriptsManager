@@ -63,54 +63,90 @@ func (er *EnvironmentRepo) Get(id string) (*Environment, error) {
 	return scanEnvironment(row)
 }
 
-func (er *EnvironmentRepo) Upsert(e Environment) error {
+func (er *EnvironmentRepo) Insert(e Environment) (int64, error) {
 	paths, err := json.Marshal(e.Paths)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	env, err := json.Marshal(e.Env)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	query, args, err := squirrel.
 		Insert("environments").
 		Columns("id", "name", "paths", "env").
 		Values(e.ID, e.Name, string(paths), string(env)).
-		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, paths=excluded.paths, env=excluded.env").
 		ToSql()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	_, err = er.db.Exec(query, args...)
+	result, err := er.db.Exec(query, args...)
+	if err != nil {
+		return 0, err
+	}
 
-	return err
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return affected, nil
 }
 
-func (er *EnvironmentRepo) Delete(id string) error {
+func (er *EnvironmentRepo) Update(e Environment) (int64, error) {
+	paths, err := json.Marshal(e.Paths)
+	if err != nil {
+		return 0, err
+	}
+	env, err := json.Marshal(e.Env)
+	if err != nil {
+		return 0, err
+	}
+
+	query, args, err := squirrel.
+		Update("environments").
+		Set("name", e.Name).
+		Set("paths", string(paths)).
+		Set("env", string(env)).
+		Where(squirrel.Eq{"id": e.ID}).
+		ToSql()
+	if err != nil {
+		return 0, err
+	}
+
+	result, err := er.db.Exec(query, args...)
+	if err != nil {
+		return 0, err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return affected, nil
+}
+
+func (er *EnvironmentRepo) Delete(id string) (int64, error) {
 	query, args, err := squirrel.
 		Delete("environments").
 		Where(squirrel.Eq{"id": id}).
 		ToSql()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	result, err := er.db.Exec(query, args...)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return 0, err
 	}
-	if affected == 0 {
-		return ErrNotFound
-	}
-
-	return nil
+	return affected, nil
 }
 
 // scanner abstracts *sql.Row and *sql.Rows so a single decode helper works for

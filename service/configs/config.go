@@ -122,7 +122,7 @@ func (config *Config) SaveConfig(path string) error {
 		return errJson
 	}
 
-	if errOS := os.WriteFile(path, data, os.ModePerm); errOS != nil {
+	if errOS := os.WriteFile(path, data, 0755); errOS != nil {
 		return errOS
 	}
 
