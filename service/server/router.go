@@ -110,6 +110,14 @@ func (router *Router) AddScript(c *gin.Context) {
 		return
 	}
 
+	if len(req.Name) == 0 {
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    req,
+		})
+		return
+	}
+
 	result, apiErr := router.scriptService.AddScript(req)
 	if apiErr != nil {
 		c.JSON(500, gin.H{
@@ -156,7 +164,6 @@ func (router *Router) DeleteScript(c *gin.Context) {
 				"message": "delete script failed",
 				"data":    apiErr.Error(),
 			})
-
 		default:
 			c.JSON(500, gin.H{
 				"message": "delete script failed",
@@ -365,7 +372,7 @@ func (router *Router) UpdateEnvironment(c *gin.Context) {
 		return
 	}
 
-	result, apiErr := router.environmentService.UpdateEnvironment(req)
+	count, apiErr := router.environmentService.UpdateEnvironment(req)
 	if apiErr != nil {
 		c.JSON(500, gin.H{
 			"message": "update environment failed",
@@ -373,9 +380,17 @@ func (router *Router) UpdateEnvironment(c *gin.Context) {
 		})
 		return
 	}
+
+	if count == 0 {
+		c.JSON(404, gin.H{
+			"message": "environment not found",
+		})
+		return
+	}
+
 	c.JSON(200, gin.H{
 		"message": "success",
-		"data":    result,
+		"data":    count,
 	})
 }
 

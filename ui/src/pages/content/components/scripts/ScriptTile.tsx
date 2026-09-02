@@ -75,9 +75,9 @@ function ScriptTileBody({script}: ScriptTileProps) {
             await update(script.id, payload);
             message.success("已保存修改");
             setEditing(false);
-        } catch (e) {
+        } catch (e:any) {
             console.log(e)
-            message.error(`保存失败：${(e as Error).message}`);
+            message.error(`保存失败：${e.response?.data.message || (e as Error).message}`);
         }
     };
 
@@ -85,9 +85,9 @@ function ScriptTileBody({script}: ScriptTileProps) {
         try {
             await remove(script.id);
             message.success("已删除脚本");
-        } catch (e) {
+        } catch (e:any) {
             console.log(e)
-            message.error(`删除失败：${(e as Error).message}`);
+            message.error(`删除失败：${e.response?.data.message || (e as Error).message}`);
         }
     };
 
@@ -96,9 +96,9 @@ function ScriptTileBody({script}: ScriptTileProps) {
             await add(payload);
             message.success("已创建脚本");
             setCopying(false);
-        } catch (e) {
+        } catch (e:any) {
             console.log(e)
-            message.error(`创建失败：${(e as Error).message}`);
+            message.error(`创建失败：${e.response?.data.message || (e as Error).message}`);
         }
     };
 

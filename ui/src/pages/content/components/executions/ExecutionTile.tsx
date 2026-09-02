@@ -1,7 +1,6 @@
 import {App, Button, Card, Popconfirm, Tag, Typography, Space} from "antd";
 import {StopOutlined} from "@ant-design/icons";
 import type {ExecutionInfo} from "../../../../types/models";
-import {useEnvironmentStore} from "../../../../store/environmentStore";
 import {useExecutionStore} from "../../../../store/executionStore";
 
 const STATUS_COLOR: Record<string, string> = {
@@ -22,7 +21,6 @@ export function ExecutionTile({
     execution: ExecutionInfo
 }) {
     const {message} = App.useApp();
-    const nameOf = useEnvironmentStore((s) => s.nameOf);
     const remove = useExecutionStore((s) => s.remove);
 
     const handleKill = async () => {
@@ -52,15 +50,15 @@ export function ExecutionTile({
             <Space orientation="vertical" style={{width: "100%"}} size={10}>
                 <div>
                     <Typography.Text type="secondary" style={{fontSize: 12}}>
-                        启用的环境 (environments)
+                        环境变量 (environments)
                     </Typography.Text>
                     <div>
-                        {execution.environments.length === 0 ? (
+                        {(execution.environments ?? []).length === 0 ? (
                             <Typography.Text type="secondary">无</Typography.Text>
                         ) : (
                             <Space size={4} wrap>
-                                {execution.environments.map((id) => (
-                                    <Tag key={id}>{nameOf(id)}</Tag>
+                                {(execution.environments ?? []).map((v) => (
+                                    <Tag key={v} color="blue">{v}</Tag>
                                 ))}
                             </Space>
                         )}

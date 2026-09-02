@@ -24,8 +24,8 @@ export function EnvironmentsPage() {
             await add(payload);
             message.success("已创建环境");
             setCreating(false);
-        } catch (e) {
-            message.error(`创建失败：${(e as Error).message}`);
+        } catch (e:any) {
+            message.error(`创建失败：${e.response?.data.message || (e as Error).message}`);
         }
     };
 

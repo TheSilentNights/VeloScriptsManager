@@ -48,7 +48,7 @@ func (service *ScriptService) AddScript(req *models.AddScriptRequest) (int64, er
 		Environments: req.EnvironmentsId,
 	}
 
-	count, err := service.scriptRepo.Upsert(script)
+	count, err := service.scriptRepo.Insert(script)
 
 	if err != nil {
 		return -1, errors.New("db add error")
@@ -66,7 +66,7 @@ func (service *ScriptService) UpdateScript(req *models.UpdateScriptRequest) (int
 		Command:      req.Command,
 		Environments: req.EnvironmentsId,
 	}
-	count, err := service.scriptRepo.Upsert(script)
+	count, err := service.scriptRepo.Update(script)
 
 	if err != nil {
 		return -1, ierrors.UpdateScriptDbError
@@ -77,19 +77,22 @@ func (service *ScriptService) UpdateScript(req *models.UpdateScriptRequest) (int
 
 func (service *ScriptService) DeleteScript(id string) (int64, error) {
 
-	findExecutionByScriptId := func(scriptId string) *executor.Execution {
+	findExecutionByScriptId := func(scriptId string) []*executor.Execution {
+		executions := make([]*executor.Execution, 0)
 		for _, e := range service.executions.List() {
 			if e.GetScriptInfo().ScriptID == scriptId {
-				return e
+				executions = append(executions, e)
 			}
 		}
-		return nil
+		return executions
 	}
 
-	execution := findExecutionByScriptId(id)
+	executions := findExecutionByScriptId(id)
 
-	if execution != nil && execution.GetStatus() == "running" {
-		return -1, ierrors.ScriptIsRunningError
+	for _, e := range executions {
+		if e.GetStatus() == "running" {
+			return -1, ierrors.ScriptIsRunningError
+		}
 	}
 
 	count, err := service.scriptRepo.Delete(id)
@@ -118,9 +121,12 @@ func (service *ScriptService) MakeAndStartExecution(
 	if command == nil {
 		command = script.Command
 	}
+	if command == nil {
+		command = make([]string, 0)
+	}
 
 	if environmentsId == nil {
-		environmentsId = make([]string, 0)
+		environmentsId = script.Environments
 	}
 
 	env, apiErr := service.resolveEnvironmentVars(environmentsId)
@@ -170,7 +176,7 @@ func (service *ScriptService) ListExecutions() (any, error) {
 			Name:         e.GetScriptInfo().Name,
 			StartedAt:    e.GetScriptInfo().StartedAt,
 			Command:      e.GetScriptInfo().Command,
-			Environments: e.GetScriptInfo().Environments,
+			Environments: e.GetScriptInfo().EnvironmentsFlattened,
 			Status:       e.GetStatus(),
 			ExitCode:     e.GetExitCode(),
 			Error:        e.GetError(),
@@ -201,7 +207,7 @@ func (service *ScriptService) KillExecution(id string) (any, error) {
 // gen by ai
 func (service *ScriptService) resolveEnvironmentVars(ids []string) ([]string, error) {
 	if len(ids) == 0 {
-		return nil, nil
+		return make([]string, 0), nil
 	}
 
 	values := make(map[string]string)

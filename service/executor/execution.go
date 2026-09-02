@@ -15,12 +15,12 @@ import (
 )
 
 type ScriptInfo struct {
-	ScriptID     string    `json:"scriptId"`
-	Name         string    `json:"name"`
-	WorkDir      string    `json:"workdir"`
-	StartedAt    time.Time `json:"startedAt"`
-	Command      []string  `json:"command"`      // params used for this run
-	Environments []string  `json:"environments"` // environment ids applied for this run
+	ScriptID              string    `json:"scriptId"`
+	Name                  string    `json:"name"`
+	WorkDir               string    `json:"workdir"`
+	StartedAt             time.Time `json:"startedAt"`
+	Command               []string  `json:"command"`               // params used for this run
+	EnvironmentsFlattened []string  `json:"environmentsFlattened"` // environment variables applied for this run
 }
 
 // Execution tracks one asynchronously running script process.
@@ -33,7 +33,7 @@ type Execution struct {
 	doneChanSignal   chan struct{}
 
 	cmd      *exec.Cmd
-	exitErr  error
+	exitErr  string
 	exitCode int
 	status   string // running | finished | failed | prepare | killed
 }
@@ -42,12 +42,12 @@ func NewExecution(scriptID string, name string, command []string, workDir string
 	return &Execution{
 		executionId: utils.GenerateExecutionId(),
 		scriptInfo: &ScriptInfo{
-			ScriptID:     scriptID,
-			Name:         name,
-			StartedAt:    time.Now(),
-			WorkDir:      workDir,
-			Command:      command,
-			Environments: environments,
+			ScriptID:              scriptID,
+			Name:                  name,
+			StartedAt:             time.Now(),
+			WorkDir:               workDir,
+			Command:               command,
+			EnvironmentsFlattened: environments,
 		},
 		doneChanSignal: make(chan struct{}),
 		status:         "prepare",
@@ -73,8 +73,8 @@ func (execution *Execution) Start(ctx context.Context) error {
 		cmd.Dir = execution.scriptInfo.WorkDir
 	}
 
-	if len(execution.scriptInfo.Environments) > 0 {
-		cmd.Env = mergeEnviron(os.Environ(), execution.scriptInfo.Environments)
+	if len(execution.scriptInfo.EnvironmentsFlattened) > 0 {
+		cmd.Env = mergeEnviron(os.Environ(), execution.scriptInfo.EnvironmentsFlattened)
 	}
 
 	if err := cmd.Start(); err != nil {
@@ -95,56 +95,45 @@ func (execution *Execution) waitForExit() {
 	execution.finish(err)
 }
 
+func (execution *Execution) doFinish(exitCode int, status string, err error) {
+	execution.mu.Lock()
+	defer execution.mu.Unlock()
+
+	execution.status = status
+	execution.exitCode = exitCode
+	if err != nil {
+		execution.exitErr = err.Error()
+	}
+	execution.cmd = nil
+}
+
 func (execution *Execution) Kill() error {
 	execution.mu.Lock()
 	if execution.cmd == nil || execution.cmd.Process == nil {
+		execution.mu.Unlock()
 		return errors.New("process not started")
 	}
 	err := exec.Command("taskkill", "/PID", strconv.Itoa(execution.cmd.Process.Pid), "/T", "/F").Run()
 	execution.mu.Unlock()
 
-	if err == nil {
-		execution.mu.Lock()
-		defer execution.mu.Unlock()
-
-		execution.closeChannelOnce.Do(func() {
-			close(execution.doneChanSignal)
-
-			execution.status = "killed"
-			execution.exitCode = -1
-		})
-
-	}
+	execution.doFinish(-1, "killed", err)
 
 	return err
 }
 
 func (execution *Execution) finish(err error) {
-	execution.mu.Lock()
-	defer execution.mu.Unlock()
+	var exitCode int
 
-	execution.exitErr = err
 	if err == nil {
-		execution.exitCode = 0
+		exitCode = 0
 	} else {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			execution.exitCode = exitErr.ExitCode()
+			exitCode = exitErr.ExitCode()
 		}
 	}
 
-	execution.closeChannelOnce.Do(func() {
-		close(execution.doneChanSignal)
-
-		//set status
-		if execution.exitErr != nil {
-			execution.status = "failed"
-		} else {
-			execution.status = "finished"
-		}
-
-		execution.cmd = nil
-	})
+	execution.doFinish(exitCode, "finished", err)
 
 }
 
@@ -222,5 +211,5 @@ func (execution *Execution) GetExitCode() int {
 func (execution *Execution) GetError() string {
 	execution.mu.Lock()
 	defer execution.mu.Unlock()
-	return execution.exitErr.Error()
+	return execution.exitErr
 }

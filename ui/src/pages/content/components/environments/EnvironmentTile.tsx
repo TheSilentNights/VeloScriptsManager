@@ -31,9 +31,9 @@ export function EnvironmentTile({
         try {
             await update(environment.id, payload);
             await message.success("已保存修改");
-        } catch (e) {
+        } catch (e:any) {
             console.log(e)
-            await message.error(`保存失败：${(e as Error).message}`);
+            await message.error(`保存失败：${e.response?.data.message || (e as Error).message}`);
         }
     };
 
@@ -41,9 +41,9 @@ export function EnvironmentTile({
         try {
             await remove(environment.id);
             await message.success("已删除环境");
-        } catch (e) {
+        } catch (e:any) {
             console.log(e)
-            await message.error(`删除失败：${(e as Error).message}`);
+            await message.error(`删除失败：${e.response?.data.message || (e as Error).message}`);
         }
     };
 
@@ -52,9 +52,9 @@ export function EnvironmentTile({
             await add(payload);
             await message.success("已创建环境");
             setCopying(false);
-        } catch (e) {
+        } catch (e:any) {
             console.log(e)
-            await message.error(`创建失败：${(e as Error).message}`);
+            await message.error(`创建失败：${e.response?.data.message || (e as Error).message}`);
         }
     };
 

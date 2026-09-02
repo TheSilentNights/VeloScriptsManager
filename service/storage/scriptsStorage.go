@@ -86,7 +86,7 @@ func (sr *ScriptRepo) Get(id string) (*Script, error) {
 	return &s, nil
 }
 
-func (sr *ScriptRepo) Upsert(s Script) (int64, error) {
+func (sr *ScriptRepo) Insert(s Script) (int64, error) {
 	command, err := json.Marshal(s.Command)
 	if err != nil {
 		return -1, err
@@ -100,7 +100,6 @@ func (sr *ScriptRepo) Upsert(s Script) (int64, error) {
 		Insert("scripts").
 		Columns("id", "name", "work_dir", "command", "environments").
 		Values(s.ID, s.Name, s.WorkDir, string(command), string(environments)).
-		Suffix("ON CONFLICT(id) DO UPDATE SET name=excluded.name, work_dir=excluded.work_dir, command=excluded.command, environments=excluded.environments").
 		ToSql()
 
 	if err != nil {
@@ -119,6 +118,42 @@ func (sr *ScriptRepo) Upsert(s Script) (int64, error) {
 	}
 
 	return affected, nil
+}
+
+func (sr *ScriptRepo) Update(s Script) (int64, error) {
+	command, err := json.Marshal(s.Command)
+	if err != nil {
+		return -1, err
+	}
+	environments, err := json.Marshal(s.Environments)
+	if err != nil {
+		return -1, err
+	}
+
+	query, args, err := squirrel.
+		Update("scripts").
+		Set("name", s.Name).
+		Set("work_dir", s.WorkDir).
+		Set("command", string(command)).
+		Set("environments", string(environments)).
+		Where(squirrel.Eq{"id": s.ID}).
+		ToSql()
+	if err != nil {
+		return -1, err
+	}
+
+	result, err := sr.db.Exec(query, args...)
+	if err != nil {
+		return -1, err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return -1, err
+	}
+
+	return affected, nil
+
 }
 
 func (sr *ScriptRepo) Delete(id string) (int64, error) {
