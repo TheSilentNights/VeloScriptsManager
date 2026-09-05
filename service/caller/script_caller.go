@@ -1,5 +1,9 @@
 package caller
 
-func callInstant(){
-	
+func callInstant() {
+
+}
+
+func callDelayed(seconds int) {
+
 }

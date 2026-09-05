@@ -13,3 +13,7 @@ func GenerateEnvironmentId() string {
 func GenerateExecutionId() string {
 	return uuid.NewString()
 }
+
+func GenerateFileChangeEventId() string {
+	return uuid.NewString()
+}
