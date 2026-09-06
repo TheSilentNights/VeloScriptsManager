@@ -17,3 +17,7 @@ func GenerateExecutionId() string {
 func GenerateFileChangeEventId() string {
 	return uuid.NewString()
 }
+
+func GenerateTimeEventId() string {
+	return uuid.NewString()
+}

@@ -39,3 +39,8 @@ type ExecuteScriptRequest struct {
 	Command        []string `form:"command" json:"command"`               // 可选：覆盖脚本存储的参数，传了就用传递的
 	EnvironmentsId []string `form:"environmentsid" json:"environmentsid"` // 可选：覆盖脚本存储的环境 id 列表
 }
+
+type RegisterFileChangeEventRequest struct {
+	Path string `form:"path" json:"path"`
+	ExecuteScriptRequest
+}

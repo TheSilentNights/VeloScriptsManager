@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github/TheSilentNights/VeloScriptsManager/service/events"
 	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
 	"strings"
 	"time"
@@ -64,6 +65,8 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	api.POST("/deleteEnvironment", router.DeleteEnvironment)
 	api.POST("/deleteExecution", router.killExecution)
 	api.POST("/stop", router.stopServer)
+
+	api.POST("/registerFileChangeEvent", router.RegisterFileChangeEvent)
 
 	api.GET("/getConfig", router.getConfig)
 	api.POST("/updateConfig", router.updateConfig)
@@ -427,6 +430,24 @@ func (router *Router) DeleteEnvironment(c *gin.Context) {
 		"data":    execution,
 	})
 
+}
+
+func (router *Router) RegisterFileChangeEvent(c *gin.Context) {
+	req := &models.RegisterFileChangeEventRequest{}
+
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+		})
+		return
+	}
+	events.RegisterFileChangeEvent(req.Path, func() {
+		router.scriptService.MakeAndStartExecution(
+			req.Id,
+			req.Command,
+			req.EnvironmentsId,
+		)
+	})
 }
 
 func (router *Router) getConfig(c *gin.Context) {

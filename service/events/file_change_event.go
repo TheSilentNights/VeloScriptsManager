@@ -1,37 +1,54 @@
 package events
 
-import "github.com/fsnotify/fsnotify"
+import (
+	"github/TheSilentNights/VeloScriptsManager/service/utils"
+	"sync"
+
+	"github.com/fsnotify/fsnotify"
+)
 
 type FileChangeEvent struct {
 	Event
 	watcher *fsnotify.Watcher
 	Path    string
+	mu      sync.Mutex
 }
 
 const FileChangeEventID = "file_change_event"
 
-var registry = make(map[string]*FileChangeEvent)
+// map by path
+var (
+	registry   = make(map[string]*FileChangeEvent)
+	registryMu sync.Mutex
+)
 
 func RegisterFileChangeEvent(path string, call func()) {
+
 	subscriber := &Subscriber{
 		call: call,
 	}
 
-	if _, ok := registry[path]; ok {
-		registry[path].Event.subscribers = append(registry[path].Event.subscribers, *subscriber)
+	registryMu.Lock()
+	event, ok := registry[path]
+	if ok {
+		event.mu.Lock()
+		event.Event.subscribers = append(event.Event.subscribers, subscriber)
+		event.mu.Unlock()
+		registryMu.Unlock()
 		return
 	}
 
-	event := &FileChangeEvent{
+	event = &FileChangeEvent{
 		Event: Event{
-			subscribers: make([]Subscriber, 0),
+			ID:          utils.GenerateFileChangeEventId(),
+			subscribers: []*Subscriber{subscriber},
 		},
 		Path: path,
 	}
+	registry[path] = event
+	registryMu.Unlock()
 
 	launchNewWatcher(path, event)
-
-	registry[path] = event
 }
 
 func launchNewWatcher(path string, fileChangeEvent *FileChangeEvent) {
@@ -54,7 +71,12 @@ func launchNewWatcher(path string, fileChangeEvent *FileChangeEvent) {
 					return
 				}
 
-				for _, v := range fileChangeEvent.subscribers {
+				fileChangeEvent.mu.Lock()
+				subscribers := make([]*Subscriber, len(fileChangeEvent.subscribers))
+				copy(subscribers, fileChangeEvent.subscribers)
+				fileChangeEvent.mu.Unlock()
+
+				for _, v := range subscribers {
 					v.call()
 				}
 

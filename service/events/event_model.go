@@ -1,7 +1,8 @@
 package events
 
 type Event struct {
-	subscribers []Subscriber
+	ID          string
+	subscribers []*Subscriber
 }
 
 type Subscriber struct {
