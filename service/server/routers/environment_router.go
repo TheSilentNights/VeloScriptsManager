@@ -127,7 +127,7 @@ func (router *EnvironmentRouter) DeleteEnvironment(c *gin.Context) {
 		return
 	}
 
-	execution, apiErr := router.environmentService.DeleteEnvironment(req.Id)
+	count, apiErr := router.environmentService.DeleteEnvironment(req.Id)
 
 	if apiErr != nil {
 		c.JSON(500, gin.H{
@@ -136,8 +136,14 @@ func (router *EnvironmentRouter) DeleteEnvironment(c *gin.Context) {
 		return
 	}
 
+	if count == 0 {
+		c.JSON(404, gin.H{
+			"message": "environment not found",
+		})
+		return
+	}
 	c.JSON(200, gin.H{
 		"message": "success",
-		"data":    execution,
+		"data":    count,
 	})
 }

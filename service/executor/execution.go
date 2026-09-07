@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"errors"
+	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
 	"os"
 	"os/exec"
@@ -27,6 +28,9 @@ type ScriptInfo struct {
 type Execution struct {
 	executionId string
 	scriptInfo  *ScriptInfo
+
+	doFinishOnce sync.Once
+	isKilled     bool
 
 	mu sync.Mutex
 
@@ -92,33 +96,46 @@ func (execution *Execution) waitForExit() {
 	execution.finish(err)
 }
 
-func (execution *Execution) doFinish(exitCode int, status string, err error) {
+func (execution *Execution) doFinish(exitCode int, status string, err error, fromKill bool) {
 	execution.mu.Lock()
 	defer execution.mu.Unlock()
 
-	execution.status = status
-	execution.exitCode = exitCode
-	if err != nil {
-		execution.exitErr = err.Error()
-	}
-	execution.cmd = nil
+	execution.doFinishOnce.Do(func() {
+		if !fromKill && execution.isKilled {
+			return
+		}
+		execution.status = status
+		execution.exitCode = exitCode
+		if err != nil {
+			execution.exitErr = err.Error()
+		}
+		execution.cmd = nil
+	})
+
 }
 
 func (execution *Execution) Kill() error {
 	execution.mu.Lock()
+
+	if execution.status != "running" {
+		execution.mu.Unlock()
+		return ierrors.ExecutionNotRunningError
+	}
+
 	if execution.cmd == nil || execution.cmd.Process == nil {
 		execution.mu.Unlock()
 		return errors.New("process not started")
 	}
+
 	err := exec.Command("taskkill", "/PID", strconv.Itoa(execution.cmd.Process.Pid), "/T", "/F").Run()
 	execution.mu.Unlock()
 
 	if err != nil {
-		execution.doFinish(-1, "failed", err)
+		execution.doFinish(-1, "failed", err, true)
 		return err
 	}
 
-	execution.doFinish(-1, "killed", err)
+	execution.doFinish(-1, "killed", err, true)
 
 	return err
 }
@@ -132,13 +149,14 @@ func (execution *Execution) finish(err error) {
 		status = "finished"
 	} else {
 		var exitErr *exec.ExitError
+		exitCode = -1
 		if errors.As(err, &exitErr) {
 			exitCode = exitErr.ExitCode()
-			status = "failed"
 		}
+		status = "failed"
 	}
 
-	execution.doFinish(exitCode, status, err)
+	execution.doFinish(exitCode, status, err, false)
 
 }
 

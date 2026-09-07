@@ -56,12 +56,12 @@ function ScriptTileBody({script}: ScriptTileProps) {
     const handleExecute = async () => {
         setExecuting(true);
         try {
-            const info = await executeScript(
+            await executeScript(
                 script.id,
                 enabledCommand,
                 enabledEnvironments,
             );
-            message.success(`已启动执行：${info.name}`);
+            message.success(`已启动执行：${script.name}`);
         } catch (e:any) {
             console.log(e)
             message.error(`执行失败：${e.response?.data.message || (e as Error).message}`);

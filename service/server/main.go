@@ -80,7 +80,7 @@ func main() {
 		err := server.ListenAndServe()
 
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Println(err.Error())
+			panic(err)
 		}
 	}()
 
@@ -90,10 +90,10 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		log.Println(err.Error())
+		panic(err)
 	}
 
 	if errDbClose := db.Close(); errDbClose != nil {
-		log.Println("close db: " + errDbClose.Error())
+		panic(errDbClose)
 	}
 }

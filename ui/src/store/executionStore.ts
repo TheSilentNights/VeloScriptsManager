@@ -30,7 +30,7 @@ export const useExecutionStore = create<ExecutionState>((set, get) => ({
 
     async remove(id) {
         await apiDeleteExecution(id);
-        set({executions: get().executions.filter((e) => e.executionId !== id)});
+        await get().load();
     },
 }));
 

@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/services"
 
@@ -97,11 +98,19 @@ func (router *ExecutionRouter) killExecution(c *gin.Context) {
 
 	execution, err := router.executionService.KillExecution(req.Id)
 	if err != nil {
-		c.JSON(500, gin.H{
-			"message": "kill execution failed",
-			"data":    err.Error(),
-		})
-		return
+		switch err {
+		case ierrors.ExecutionNotRunningError:
+			c.JSON(400, gin.H{
+				"message": "execution not running",
+			})
+			return
+		default:
+			c.JSON(500, gin.H{
+				"message": "kill execution failed",
+				"data":    err.Error(),
+			})
+			return
+		}
 	}
 	c.JSON(200, gin.H{
 		"message": "success",

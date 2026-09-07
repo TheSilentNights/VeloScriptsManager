@@ -63,6 +63,9 @@ func launchNewWatcher(path string, fileChangeEvent *FileChangeEvent) {
 
 	//add a path
 	if err := watcher.Add(path); err != nil {
+		registryMu.Lock()
+		delete(registry, path)
+		registryMu.Unlock()
 		watcher.Close()
 		return
 	}

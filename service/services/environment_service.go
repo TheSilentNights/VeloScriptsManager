@@ -70,10 +70,10 @@ func (service *EnvironmentService) UpdateEnvironment(req *models.UpdateEnvironme
 	return count, nil
 }
 
-func (service *EnvironmentService) DeleteEnvironment(id string) (any, error) {
+func (service *EnvironmentService) DeleteEnvironment(id string) (int64, error) {
 	count, err := service.environmentRepo.Delete(id)
 	if err != nil {
-		return nil, ierrors.DeleteEnvironmentDbError
+		return -1, ierrors.DeleteEnvironmentDbError
 	}
 	return count, nil
 }

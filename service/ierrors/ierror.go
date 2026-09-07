@@ -16,5 +16,6 @@ var EnvironmentNotFound = errors.New("environment not found")
 var ExecutionNotFound = errors.New("execution not found")
 
 var ExecuteScriptError = errors.New("execute script error")
+var ExecutionNotRunningError = errors.New("execution not running")
 
 var ScriptIsRunningError = errors.New("script is running")

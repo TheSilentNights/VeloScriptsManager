@@ -69,6 +69,14 @@ func (router *ScriptsRouter) AddScript(c *gin.Context) {
 		return
 	}
 
+	if len(req.Command) == 0 {
+		c.JSON(400, gin.H{
+			"message": "invalid arguments",
+			"data":    req,
+		})
+		return
+	}
+
 	result, apiErr := router.scriptService.AddScript(req)
 	if apiErr != nil {
 		c.JSON(500, gin.H{

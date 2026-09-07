@@ -57,38 +57,64 @@ async function sendPost<T>(path: string, data? : any, config?: AxiosRequestConfi
     return body.data;
 }
 
+async function sendPut<T>(path: string, data? : any, config?: AxiosRequestConfig): Promise<T> {
+    const res = await http.put<ApiEnvelope<T>>(path,data,config).catch((err) => {
+        console.error(err.response.data.message)
+        throw err
+    });
+    const body = res.data;
+
+    console.log(body.message)
+
+    return body.data;
+}
+
+async function sendDelete<T>(path: string, config?: AxiosRequestConfig): Promise<T> {
+    const res = await http.delete<ApiEnvelope<T>>(path,config).catch((err) => {
+        console.error(err.response.data.message)
+        throw err
+    });
+    const body = res.data;
+
+    console.log(body.message)
+
+    return body.data;
+}
+
+
+
 export function fetchScripts(): Promise<Script[]> {
-    return sendGet<Script[]>("/api/v1/getStoredScripts");
+    return sendGet<Script[]>("/api/v1/scripts/");
 }
 
 export interface ScriptPayload {
     name: string
     workDir: string
     command: string[]
-    environmentsId: string[]
+    environmentsid: string[]
 }
 
-export function addScript(payload: ScriptPayload): Promise<ScriptPayload> {
-    return sendPost<ScriptPayload>("/api/v1/addScript", payload);
+export function addScript(payload: ScriptPayload): Promise<unknown> {
+    return sendPost("/api/v1/scripts/add", payload);
 }
 
-export function updateScript(id: string, payload: ScriptPayload): Promise<ScriptPayload> {
-    return sendPost("/api/v1/updateScript", {
+export function updateScript(id: string, payload: ScriptPayload): Promise<unknown> {
+    return sendPut("/api/v1/scripts/update", {
         id:id,
         ...payload
     });
 }
 
 export function deleteScript(id: string): Promise<unknown> {
-    return sendPost("/api/v1/deleteScript",{id:id});
+    return sendDelete("/api/v1/scripts/delete",{params: {id:id}});
 }
 
 export function executeScript(
     id: string,
     command: string[],
     environments: string[],
-): Promise<ExecutionInfo> {
-    return sendPost<ExecutionInfo>("/api/v1/executeScript", {
+): Promise<void> {
+    return sendPost<void>("/api/v1/execution/execute", {
         id,
         command,
         environmentsid: environments,
@@ -96,7 +122,7 @@ export function executeScript(
 }
 
 export function fetchEnvironments(): Promise<Environment[]> {
-    return sendGet<Environment[]>("/api/v1/getEnvironments",{method: "GET"});
+    return sendGet<Environment[]>("/api/v1/environments/",{method: "GET"});
 }
 
 export interface EnvironmentPayload {
@@ -106,26 +132,26 @@ export interface EnvironmentPayload {
 }
 
 export function addEnvironment(payload: EnvironmentPayload): Promise<unknown> {
-    return sendPost("/api/v1/addEnvironment", payload);
+    return sendPost("/api/v1/environments/add", payload);
 }
 
 export function updateEnvironment(id: string, payload: EnvironmentPayload): Promise<unknown> {
-    return sendPost("/api/v1/updateEnvironment", {
+    return sendPut("/api/v1/environments/update", {
         id,
         ...payload,
     });
 }
 
 export function deleteEnvironment(id: string): Promise<unknown> {
-    return sendPost("/api/v1/deleteEnvironment", {id: id});
+    return sendDelete("/api/v1/environments/delete",{params: {id:id}});
 }
 
 export function getExecutions(): Promise<ExecutionInfo[]> {
-    return sendGet<ExecutionInfo[]>("/api/v1/getExecutions");
+    return sendGet<ExecutionInfo[]>("/api/v1/execution/");
 }
 
 export function deleteExecution(id: string): Promise<unknown> {
-    return sendPost("/api/v1/deleteExecution", {id: id});
+    return sendPost("/api/v1/execution/kill", {id: id});
 }
 
 export interface ConfigPayload {

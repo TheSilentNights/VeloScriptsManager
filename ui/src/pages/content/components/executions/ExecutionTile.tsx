@@ -7,12 +7,24 @@ const STATUS_COLOR: Record<string, string> = {
     running: "green",
     finished: "default",
     failed: "red",
+    killed: "orange",
+    prepare: "blue",
+};
+
+const STATUS_DOT_COLOR: Record<string, string> = {
+    running: "#52c41a",
+    finished: "#d9d9d9",
+    failed: "#ff4d4f",
+    killed: "#faad14",
+    prepare: "#1890ff",
 };
 
 const STATUS_TEXT: Record<string, string> = {
     running: "执行中",
     finished: "已完成",
     failed: "失败",
+    killed: "已终止",
+    prepare: "准备中",
 };
 
 export function ExecutionTile({
@@ -84,22 +96,33 @@ export function ExecutionTile({
                     </div>
                 </div>
 
-                <Popconfirm
-                    title="终止执行"
-                    description="确定要终止该执行实例吗？"
-                    okText="终止"
-                    okButtonProps={{color: "danger"}}
-                    cancelText="取消"
-                    onConfirm={handleKill}
-                >
+                {execution.status === "running" ? (
+                    <Popconfirm
+                        title="终止执行"
+                        description="确定要终止该执行实例吗？"
+                        okText="终止"
+                        okButtonProps={{color: "danger"}}
+                        cancelText="取消"
+                        onConfirm={handleKill}
+                    >
+                        <Button
+                            danger
+                            block
+                            icon={<StopOutlined/>}
+                        >
+                            终止
+                        </Button>
+                    </Popconfirm>
+                ) : (
                     <Button
                         danger
                         block
                         icon={<StopOutlined/>}
+                        disabled
                     >
                         终止
                     </Button>
-                </Popconfirm>
+                )}
             </Space>
         </Card>
     );

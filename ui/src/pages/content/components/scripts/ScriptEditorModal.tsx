@@ -69,7 +69,7 @@ export function ScriptEditorModal({
             name: values.name,
             workDir: values.workDir,
             command: values.command ?? [],
-            environmentsId: values.environments ?? [],
+            environmentsid: values.environments ?? [],
         });
     };
 

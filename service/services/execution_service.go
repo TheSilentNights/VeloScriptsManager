@@ -5,6 +5,7 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/executor"
 	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
 	"github/TheSilentNights/VeloScriptsManager/service/models"
+	"log"
 )
 
 var executionService *ExecutionService
@@ -47,6 +48,7 @@ func (service *ExecutionService) MakeAndStartExecution(
 	startErr := execution.Start(context.Background())
 
 	if startErr != nil {
+		log.Printf("start execution failed: %v", startErr)
 		return nil, ierrors.ExecuteScriptError
 	}
 
@@ -76,7 +78,6 @@ func (service *ExecutionService) KillExecution(id string) (any, error) {
 	if killErr != nil {
 		return nil, killErr
 	}
-	service.executions.Remove(id)
 	return "execution deleted", nil
 }
 
