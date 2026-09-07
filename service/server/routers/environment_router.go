@@ -17,7 +17,7 @@ func NewEnvironmentRouter(environmentService *services.EnvironmentService) *Envi
 	}
 }
 
-func (router *EnvironmentRouter) RegisterRoutes(engine *gin.Engine) {
+func (router *EnvironmentRouter) RegisterRoutes(engine *gin.RouterGroup) {
 	environmentGroup := engine.Group("/environments")
 	{
 		environmentGroup.GET("/", router.getStoredEnvironments)

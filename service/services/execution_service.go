@@ -7,9 +7,25 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 )
 
+var executionService *ExecutionService
+
+type ExecutionProvider interface {
+	List() []*executor.Execution
+}
+
 type ExecutionService struct {
-	executions    *executor.ExecutionManager
-	scriptService *ScriptService
+	executions *executor.ExecutionManager
+}
+
+func NewExecutionService(executions *executor.ExecutionManager) *ExecutionService {
+	executionService = &ExecutionService{
+		executions: executions,
+	}
+	return executionService
+}
+
+func GetExecutionProvider() ExecutionProvider {
+	return executionService
 }
 
 func (service *ExecutionService) MakeAndStartExecution(
@@ -62,6 +78,10 @@ func (service *ExecutionService) KillExecution(id string) (any, error) {
 	}
 	service.executions.Remove(id)
 	return "execution deleted", nil
+}
+
+func (service *ExecutionService) List() []*executor.Execution {
+	return service.executions.List()
 }
 
 func (service *ExecutionService) ListExecutions() (any, error) {

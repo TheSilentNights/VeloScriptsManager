@@ -1,15 +1,11 @@
 package main
 
 import (
-	"errors"
-	"github/TheSilentNights/VeloScriptsManager/service/events"
-	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
 	"github/TheSilentNights/VeloScriptsManager/service/server/routers"
 	"strings"
 	"time"
 
 	"github/TheSilentNights/VeloScriptsManager/service/configs"
-	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/services"
 
 	"github.com/gin-contrib/cors"
@@ -19,6 +15,8 @@ import (
 type Router struct {
 	scriptRouter      *routers.ScriptsRouter
 	environmentRouter *routers.EnvironmentRouter
+	executionRouter   *routers.ExecutionRouter
+	eventRouter       *routers.EventRouter
 	serverController  *services.Server
 }
 
@@ -26,10 +24,14 @@ func NewRouter(
 	scriptService *services.ScriptService,
 	environmentService *services.EnvironmentService,
 	serverController *services.Server,
+	executionService *services.ExecutionService,
+	callerService *services.CallerService,
 ) *Router {
 	return &Router{
 		environmentRouter: routers.NewEnvironmentRouter(environmentService),
-		scriptRouter:      routers.NewScriptsRouter(scriptService),
+		scriptRouter:      routers.NewScriptsRouter(scriptService, environmentService, callerService),
+		executionRouter:   routers.NewExecutionRouter(executionService, callerService),
+		eventRouter:       routers.NewEventRouter(callerService),
 		serverController:  serverController,
 	}
 }
@@ -43,7 +45,7 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 				origin == "http://127.0.0.1:5173" ||
 				strings.HasPrefix(origin, "http://127.0.0.1:")
 		},
-		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "OPTIONS", "DELETE", "PUT"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
@@ -53,18 +55,13 @@ func (router *Router) RegisterRoutes(engine *gin.Engine) {
 	engine.GET("/status", router.getStatus)
 
 	api := engine.Group("/api/v1/")
-	api.GET("/getExecutions", router.getExecutions)
 
-	api.POST("/addScript", router.AddScript)
-	api.POST("/updateScript", router.UpdateScript)
-	api.POST("/deleteScript", router.DeleteScript)
-	api.POST("/executeScript", router.ExecuteScript)
+	router.scriptRouter.RegisterRoutes(api)
+	router.environmentRouter.RegisterRoutes(api)
+	router.executionRouter.RegisterRoutes(api)
+	router.eventRouter.RegisterRoutes(api)
 
-	api.POST("/deleteExecution", router.killExecution)
 	api.POST("/stop", router.stopServer)
-
-	api.POST("/registerFileChangeEvent", router.RegisterFileChangeEvent)
-
 	api.GET("/getConfig", router.getConfig)
 	api.POST("/updateConfig", router.updateConfig)
 }
@@ -83,72 +80,6 @@ func (router *Router) stopServer(c *gin.Context) {
 }
 
 // getExecutions returns the id/status snapshot of all tracked executions.
-func (router *Router) getExecutions(c *gin.Context) {
-	result, apiErr := router.scriptService.ListExecutions()
-	if apiErr != nil {
-		c.JSON(500, gin.H{
-			"message": "list executions failed",
-			"data":    apiErr.Error(),
-		})
-		return
-	}
-	c.JSON(200, gin.H{
-		"message": "success",
-		"data":    result,
-	})
-
-}
-
-func (router *Router) killExecution(c *gin.Context) {
-	req := &models.DeleteRequest{}
-
-	if err := c.ShouldBind(req); err != nil {
-		c.JSON(400, gin.H{
-			"message": "invalid arguments",
-			"data":    err.Error(),
-		})
-		return
-	}
-
-	if len(req.Id) == 0 {
-		c.JSON(400, gin.H{
-			"message": "invalid arguments",
-		})
-		return
-	}
-
-	execution, err := router.scriptRouter.GetScriptService().KillExecution(req.Id)
-	if err != nil {
-		c.JSON(500, gin.H{
-			"message": "kill execution failed",
-			"data":    err.Error(),
-		})
-		return
-	}
-	c.JSON(200, gin.H{
-		"message": "success",
-		"data":    execution,
-	})
-
-}
-
-func (router *Router) RegisterFileChangeEvent(c *gin.Context) {
-	req := &models.RegisterFileChangeEventRequest{}
-
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(400, gin.H{
-			"message": "invalid arguments",
-		})
-		return
-	}
-	events.RegisterFileChangeEvent(req.Path, func() {
-		router.scriptRouter.GetScriptService().MakeAndStartExecution(
-			req.Id,
-			req.Command,
-			req.EnvironmentsId,
-		)
-	})
-}
 
 func (router *Router) getConfig(c *gin.Context) {
 	c.JSON(200, gin.H{

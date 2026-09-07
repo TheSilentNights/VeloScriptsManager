@@ -10,12 +10,23 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
 )
 
+var environmentService *EnvironmentService
+
+type EnvironmentProvider interface {
+	GetEnvironment(id string) (*storage.Environment, error)
+}
+
 type EnvironmentService struct {
 	environmentRepo *storage.EnvironmentRepo
 }
 
 func NewEnvironmentService(environmentRepo *storage.EnvironmentRepo) *EnvironmentService {
-	return &EnvironmentService{environmentRepo: environmentRepo}
+	environmentService = &EnvironmentService{environmentRepo: environmentRepo}
+	return environmentService
+}
+
+func GetEnvironmentProvider() EnvironmentProvider {
+	return environmentService
 }
 
 func (service *EnvironmentService) ListEnvironments() (any, error) {
@@ -67,7 +78,7 @@ func (service *EnvironmentService) DeleteEnvironment(id string) (any, error) {
 	return count, nil
 }
 
-func (service *EnvironmentService) getEnvironment(id string) (*storage.Environment, error) {
+func (service *EnvironmentService) GetEnvironment(id string) (*storage.Environment, error) {
 	result, err := service.environmentRepo.Get(id)
 
 	if err != nil {

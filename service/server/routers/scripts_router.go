@@ -10,24 +10,26 @@ import (
 )
 
 type ScriptsRouter struct {
-	scriptService *services.ScriptService
-	callerService *services.CallerService
+	scriptService      *services.ScriptService
+	environmentService *services.EnvironmentService
+	callerService      *services.CallerService
 }
 
-func NewScriptsRouter(scriptService *services.ScriptService, callerService *services.CallerService) *ScriptsRouter {
+func NewScriptsRouter(scriptService *services.ScriptService, environmentService *services.EnvironmentService, callerService *services.CallerService) *ScriptsRouter {
 	return &ScriptsRouter{
-		scriptService: scriptService,
-		callerService: callerService,
+		scriptService:      scriptService,
+		environmentService: environmentService,
+		callerService:      callerService,
 	}
 }
 
-func (router *ScriptsRouter) RegisterRoutes(engine *gin.Engine) {
+func (router *ScriptsRouter) RegisterRoutes(engine *gin.RouterGroup) {
 	scriptsGroup := engine.Group("/scripts")
 	{
 		scriptsGroup.GET("/", router.getStoredScripts)
-		scriptsGroup.POST("/", router.AddScript)
-		scriptsGroup.PUT("/:id", router.UpdateScript)
-		scriptsGroup.DELETE("/:id", router.DeleteScript)
+		scriptsGroup.POST("/add", router.AddScript)
+		scriptsGroup.PUT("/update", router.UpdateScript)
+		scriptsGroup.DELETE("/delete", router.DeleteScript)
 	}
 }
 
@@ -100,7 +102,7 @@ func (router *ScriptsRouter) DeleteScript(c *gin.Context) {
 		return
 	}
 
-	count, apiErr := router.scriptService.DeleteScript(req.Id)
+	count, apiErr := router.scriptService.DeleteScript(req.Id, services.GetExecutionProvider())
 	if apiErr != nil {
 		switch {
 		case errors.Is(apiErr, ierrors.ScriptIsRunningError):
@@ -193,6 +195,8 @@ func (router *ScriptsRouter) ExecuteScript(c *gin.Context) {
 		req.Id,
 		req.Command,
 		req.EnvironmentsId,
+		router.scriptService,
+		router.environmentService,
 	)
 
 	if apiErr != nil {

@@ -5,29 +5,37 @@ import (
 	"errors"
 	"github/TheSilentNights/VeloScriptsManager/service/executor"
 	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
-	"github/TheSilentNights/VeloScriptsManager/service/storage"
 	"sort"
 	"strings"
 
 	"github.com/emirpasic/gods/sets/linkedhashset"
 )
 
-type ScriptProvider interface {
-	GetScript(id string) (*storage.Script, error)
-}
-
-type EnvironmentProvider interface {
-	GetEnvironment(id string) (*storage.Environment, error)
+type Caller interface {
+	MakeAndStartExecution(
+		scriptId string,
+		command []string,
+		environmentsId []string,
+		scriptProvider ScriptProvider,
+		environmentProvider EnvironmentProvider,
+	) (*executor.Execution, error)
 }
 
 type CallerService struct {
 	executionService *ExecutionService
 }
 
-func NewCallerService(executionService *ExecutionService, environmentProvider EnvironmentProvider) *CallerService {
-	return &CallerService{
+var callerService *CallerService
+
+func NewCallerService(executionService *ExecutionService) *CallerService {
+	callerService = &CallerService{
 		executionService: executionService,
 	}
+	return callerService
+}
+
+func GetCaller() Caller {
+	return callerService
 }
 
 func (service *CallerService) MakeAndStartExecution(

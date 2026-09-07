@@ -55,12 +55,16 @@ func launchNewWatcher(path string, fileChangeEvent *FileChangeEvent) {
 	watcher, err := fsnotify.NewWatcher()
 
 	if err != nil {
-		panic(err)
+		registryMu.Lock()
+		delete(registry, path)
+		registryMu.Unlock()
+		return
 	}
 
 	//add a path
 	if err := watcher.Add(path); err != nil {
-		panic(err)
+		watcher.Close()
+		return
 	}
 
 	go func() {

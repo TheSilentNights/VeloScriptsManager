@@ -10,20 +10,25 @@ import (
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
 )
 
-type ExecutionsProvider interface {
-	List() []*executor.Execution
+var scriptService *ScriptService
+
+type ScriptProvider interface {
+	GetScript(id string) (*storage.Script, error)
 }
 
 type ScriptService struct {
-	scriptRepo         *storage.ScriptRepo
-	environmentService *EnvironmentService
+	scriptRepo *storage.ScriptRepo
 }
 
-func NewScriptService(scriptRepo *storage.ScriptRepo, environmentService *EnvironmentService) *ScriptService {
-	return &ScriptService{
-		scriptRepo:         scriptRepo,
-		environmentService: environmentService,
+func NewScriptService(scriptRepo *storage.ScriptRepo) *ScriptService {
+	scriptService = &ScriptService{
+		scriptRepo: scriptRepo,
 	}
+	return scriptService
+}
+
+func GetScriptProvider() ScriptProvider {
+	return scriptService
 }
 
 func (service *ScriptService) ListScripts() (any, error) {
@@ -71,11 +76,11 @@ func (service *ScriptService) UpdateScript(req *models.UpdateScriptRequest) (int
 	return count, nil
 }
 
-func (service *ScriptService) DeleteScript(id string, executionsProvider ExecutionsProvider) (int64, error) {
+func (service *ScriptService) DeleteScript(id string, executionProvider ExecutionProvider) (int64, error) {
 
 	findExecutionByScriptId := func(scriptId string) []*executor.Execution {
 		executions := make([]*executor.Execution, 0)
-		for _, e := range executionsProvider.List() {
+		for _, e := range executionProvider.List() {
 			if e.GetScriptInfo().ScriptID == scriptId {
 				executions = append(executions, e)
 			}
@@ -100,6 +105,6 @@ func (service *ScriptService) DeleteScript(id string, executionsProvider Executi
 	return count, nil
 }
 
-func (service *ScriptService) getScript(id string) (*storage.Script, error) {
+func (service *ScriptService) GetScript(id string) (*storage.Script, error) {
 	return service.scriptRepo.Get(id)
 }

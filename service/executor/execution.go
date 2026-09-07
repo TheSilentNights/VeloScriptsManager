@@ -28,9 +28,7 @@ type Execution struct {
 	executionId string
 	scriptInfo  *ScriptInfo
 
-	mu               sync.Mutex
-	closeChannelOnce sync.Once
-	doneChanSignal   chan struct{}
+	mu sync.Mutex
 
 	cmd      *exec.Cmd
 	exitErr  string
@@ -49,9 +47,8 @@ func NewExecution(scriptID string, name string, command []string, workDir string
 			Command:               command,
 			EnvironmentsFlattened: environments,
 		},
-		doneChanSignal: make(chan struct{}),
-		status:         "prepare",
-		exitCode:       -1,
+		status:   "prepare",
+		exitCode: -1,
 	}
 }
 
@@ -116,6 +113,11 @@ func (execution *Execution) Kill() error {
 	err := exec.Command("taskkill", "/PID", strconv.Itoa(execution.cmd.Process.Pid), "/T", "/F").Run()
 	execution.mu.Unlock()
 
+	if err != nil {
+		execution.doFinish(-1, "failed", err)
+		return err
+	}
+
 	execution.doFinish(-1, "killed", err)
 
 	return err
@@ -123,17 +125,20 @@ func (execution *Execution) Kill() error {
 
 func (execution *Execution) finish(err error) {
 	var exitCode int
+	var status string
 
 	if err == nil {
 		exitCode = 0
+		status = "finished"
 	} else {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			exitCode = exitErr.ExitCode()
+			status = "failed"
 		}
 	}
 
-	execution.doFinish(exitCode, "finished", err)
+	execution.doFinish(exitCode, status, err)
 
 }
 

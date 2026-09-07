@@ -56,12 +56,17 @@ func main() {
 		executionManager,
 	)
 	environmentService := services.NewEnvironmentService(environmentRepo)
-	scriptService := services.NewScriptService(scriptRepo, executionManager, environmentService)
+	scriptService := services.NewScriptService(scriptRepo)
+	executionService := services.NewExecutionService(executionManager)
+
+	callerService := services.NewCallerService(executionService)
 
 	router := NewRouter(
 		scriptService,
 		environmentService,
 		serverController,
+		executionService,
+		callerService,
 	)
 
 	router.RegisterRoutes(r)
