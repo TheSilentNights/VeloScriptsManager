@@ -30,6 +30,31 @@ export interface ExecutionInfo {
     error?: string
 }
 
+export interface FileChangeEventDetail {
+    ID: string
+    Path: string
+}
+
+export interface TimeEventDetail {
+    ID: string
+    Interval: number
+    Repeat: boolean
+}
+
+export interface FileChangeEventInfo {
+    eventId: string
+    type: "fileChangeEvent"
+    event: FileChangeEventDetail
+}
+
+export interface TimeEventInfo {
+    eventId: string
+    type: "timeEvent"
+    event: TimeEventDetail
+}
+
+export type EventInfo = FileChangeEventInfo | TimeEventInfo
+
 export interface ApiEnvelope<T> {
     code: number
     message: string

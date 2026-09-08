@@ -1,5 +1,5 @@
 import axios, {type AxiosRequestConfig} from "axios";
-import type {Environment, EnvVar, ExecutionInfo, Script} from "../types/models";
+import type {Environment, EnvVar, EventInfo, ExecutionInfo, Script} from "../types/models";
 
 const http = axios.create({
     headers: {"Content-Type": "application/json"},
@@ -152,6 +152,35 @@ export function getExecutions(): Promise<ExecutionInfo[]> {
 
 export function deleteExecution(id: string): Promise<unknown> {
     return sendPost("/api/v1/execution/kill", {id: id});
+}
+
+export function fetchEvents(): Promise<EventInfo[]> {
+    return sendGet<EventInfo[]>("/api/v1/event/");
+}
+
+export interface ExecuteScriptPayload {
+    id: string
+    command?: string[]
+    environmentsid?: string[]
+}
+
+export interface FileChangeEventPayload {
+    path: string
+    execute_script: ExecuteScriptPayload
+}
+
+export interface TimeEventPayload {
+    interval: number
+    repeat: boolean
+    execute_script: ExecuteScriptPayload
+}
+
+export function registerFileChangeEvent(payload: FileChangeEventPayload): Promise<void> {
+    return sendPost<void>("/api/v1/event/registerFileChangeEvent", payload);
+}
+
+export function registerTimeEvent(payload: TimeEventPayload): Promise<void> {
+    return sendPost<void>("/api/v1/event/registerTimeEvent", payload);
 }
 
 export interface ConfigPayload {

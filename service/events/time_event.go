@@ -35,7 +35,8 @@ func RegisterTimeEvent(afterSeconds int, repeat bool, call func()) {
 			ID:          utils.GenerateTimeEventId(),
 			subscribers: []*Subscriber{subscriber},
 		},
-		timer: timer,
+		Interval: afterSeconds,
+		timer:    timer,
 	}
 
 	timeEventRegistry[timeEvent.ID] = timeEvent

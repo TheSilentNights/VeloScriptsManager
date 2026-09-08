@@ -11,16 +11,18 @@ import {
     CloseOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
+    NotificationOutlined,
 } from "@ant-design/icons";
 import "./AppShell.less";
 import {ScriptsPage} from "./content/ScriptsPage.tsx";
 import {ExecutionsPage} from "./content/ExecutionsPage.tsx";
 import {EnvironmentsPage} from "./content/EnvironmentsPage.tsx";
 import {SettingsPage} from "./content/SettingsPage.tsx";
+import {EventsPage} from "./content/EventsPage.tsx";
 
 const {Sider, Content} = Layout;
 
-type PageKey = "environments" | "scripts" | "executions" | "settings";
+type PageKey = "environments" | "scripts" | "executions" | "events" | "settings";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -31,6 +33,7 @@ const menuItems: MenuItem[] = [
         children: [
             {key: "scripts", icon: <CodeOutlined/>, label: "脚本管理"},
             {key: "executions", icon: <DesktopOutlined/>, label: "Executions"},
+            {key: "events", icon: <NotificationOutlined/>, label: "事件"},
         ],
     },
     {
@@ -49,6 +52,8 @@ const renderPage = (pageKey: PageKey) => {
             return <ScriptsPage/>
         case "executions":
             return <ExecutionsPage/>
+        case "events":
+            return <EventsPage/>
         case "environments":
             return <EnvironmentsPage/>
         case "settings":
