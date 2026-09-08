@@ -124,9 +124,10 @@ export function ScriptEditorModal({
                 <Form.Item label="命令 (command)" name="command">
                     <Select
                         mode="tags"
-                        placeholder="输入命令节点后回车添加"
+                        placeholder="输入命令节点后小键盘/鼠标选中回车添加"
                         tokenSeparators={[",", " "]}
                         onChange={() => setCommandSearch("")}
+                        defaultActiveFirstOption={false}
                         showSearch={{
                             onSearch: setCommandSearch,
                             searchValue: commandSearch
@@ -152,6 +153,7 @@ export function ScriptEditorModal({
                     <Select
                         mode="multiple"
                         placeholder="选择要应用的环境"
+                        defaultActiveFirstOption={false}
                         options={environments.map((e) => ({
                             label: e.name,
                             value: e.id,

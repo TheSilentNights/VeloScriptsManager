@@ -23,11 +23,10 @@ function createWindow() {
   // 根据 dev 环境变量选择加载地址
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL)
+    win.webContents.openDevTools()
   } else {
     win.loadFile(path.join(__dirname, '../index.html'))
   }
-
-  win.webContents.openDevTools()
 
   win.on('maximize', () => {
     win.webContents.send('window-maximize-change', true)

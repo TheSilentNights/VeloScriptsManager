@@ -108,6 +108,7 @@ export function EnvironmentEditorModal({
                     <Select
                         mode="tags"
                         placeholder="输入路径后回车添加"
+                        defaultActiveFirstOption={false}
                         tokenSeparators={[";"]}
                         open={false}
                     />

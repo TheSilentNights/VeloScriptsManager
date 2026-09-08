@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github/TheSilentNights/VeloScriptsManager/service/executor"
+	"github/TheSilentNights/VeloScriptsManager/service/utils"
 	"log"
 	"net/http"
 	"time"
@@ -28,6 +29,8 @@ func main() {
 
 	if *release {
 		gin.SetMode(gin.ReleaseMode)
+	} else {
+		utils.SetDev()
 	}
 
 	dataDir := "./temp"
@@ -42,7 +45,7 @@ func main() {
 
 	r := gin.Default()
 
-	db, err := storage.OpenOrCreate(dataDir + "/test_repo.db")
+	db, err := storage.OpenOrCreate(dataDir + "/data.db")
 	if err != nil {
 		log.Println("failed to open database: " + err.Error())
 		return

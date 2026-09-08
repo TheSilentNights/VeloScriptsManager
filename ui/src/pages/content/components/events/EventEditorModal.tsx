@@ -91,7 +91,6 @@ export function EventEditorModal({
                         label="监听路径 (path)"
                         name="path"
                         rules={[{required: true, whitespace: true, message: "请输入监听的文件或目录路径"}]}
-                        extra="路径无效时注册会失败，且该路径将无法再次注册"
                     >
                         <Input placeholder="例如 C:\watch\dir"/>
                     </Form.Item>
@@ -123,6 +122,7 @@ export function EventEditorModal({
                 >
                     <Select
                         placeholder="选择事件触发时要执行的脚本"
+                        defaultActiveFirstOption={false}
                         options={scripts.map((s) => ({label: s.name, value: s.id}))}
                     />
                 </Form.Item>

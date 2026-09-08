@@ -40,9 +40,14 @@ func InitConfig(path string) error {
 	var fileNotFoundError viper.ConfigFileNotFoundError
 
 	if err := viperInstance.ReadInConfig(); err != nil {
-		if errors.As(err, &fileNotFoundError) {
+		if errors.Is(err, &fileNotFoundError) {
 			// generate config file
-			viperInstance.SafeWriteConfig()
+			err := viperInstance.SafeWriteConfig()
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
 		}
 	}
 
@@ -73,5 +78,8 @@ func SetConfig(cfg Config) error {
 }
 
 func SaveConfig() error {
+	if viperInstance == nil {
+		return errors.New("viper not initialized")
+	}
 	return viperInstance.WriteConfig()
 }
