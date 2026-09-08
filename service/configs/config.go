@@ -2,6 +2,8 @@ package configs
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -37,18 +39,28 @@ func InitConfig(path string) error {
 
 	injectDefaultValue()
 
-	var fileNotFoundError viper.ConfigFileNotFoundError
-
-	if err := viperInstance.ReadInConfig(); err != nil {
-		if errors.Is(err, &fileNotFoundError) {
-			// generate config file
-			err := viperInstance.SafeWriteConfig()
-			if err != nil {
-				return err
-			}
-		} else {
+	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil && os.IsNotExist(err) {
+		err = os.MkdirAll(filepath.Dir(path), 0o755)
+		if err != nil {
 			return err
 		}
+
+		file, err = os.OpenFile(path, os.O_CREATE, 0644)
+		count, err := file.Write([]byte("{}"))
+
+		if count != 2 {
+			return errors.New("写入配置文件失败: 配置文件内容为空")
+		}
+
+		if err != nil {
+			return err
+		}
+		file.Close()
+	}
+
+	if err := viperInstance.ReadInConfig(); err != nil {
+		return err
 	}
 
 	var cfg Config
@@ -64,8 +76,7 @@ func InitConfig(path string) error {
 }
 
 func injectDefaultValue() {
-	viperInstance.SetDefault("font_size", 14)
-	viperInstance.SetDefault("frequently_used_commands", make([]string, 0))
+	viperInstance.SetDefault("font_size", 12)
 }
 
 func GetConfig() *Config {

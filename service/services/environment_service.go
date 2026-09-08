@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
+	"github/TheSilentNights/VeloScriptsManager/service/logs"
 
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/storage"
@@ -47,6 +48,7 @@ func (service *EnvironmentService) AddEnvironment(req *models.AddEnvironmentRequ
 
 	count, err := service.environmentRepo.Insert(environment)
 	if err != nil {
+		logs.Logger.Error(err.Error())
 		return nil, ierrors.AddEnvironmentDbError
 	}
 
@@ -64,6 +66,7 @@ func (service *EnvironmentService) UpdateEnvironment(req *models.UpdateEnvironme
 
 	count, err := service.environmentRepo.Update(environment)
 	if err != nil {
+		logs.Logger.Error(err.Error())
 		return nil, ierrors.UpdateEnvironmentDbError
 	}
 

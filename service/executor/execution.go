@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
+	"github/TheSilentNights/VeloScriptsManager/service/logs"
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/emirpasic/gods/maps/linkedhashmap"
+	"go.uber.org/zap"
 )
 
 type ScriptInfo struct {
@@ -57,6 +59,15 @@ func NewExecution(scriptID string, name string, command []string, workDir string
 }
 
 func (execution *Execution) Start(ctx context.Context) error {
+	logs.Logger.Info("launched execution",
+		zap.String("scriptId", execution.scriptInfo.ScriptID),
+		zap.String("name", execution.scriptInfo.Name),
+		zap.String("workdir", execution.scriptInfo.WorkDir),
+		zap.Time("startedAt", execution.scriptInfo.StartedAt),
+		zap.Strings("command", execution.scriptInfo.Command),
+		zap.Strings("environments", execution.scriptInfo.EnvironmentsFlattened),
+	)
+
 	if len(execution.scriptInfo.Command) == 0 {
 		return errors.New("empty command")
 	}
@@ -110,6 +121,14 @@ func (execution *Execution) doFinish(exitCode int, status string, err error, fro
 			execution.exitErr = err.Error()
 		}
 		execution.cmd = nil
+
+		logs.Logger.Info("execution finished",
+			zap.String("scriptId", execution.scriptInfo.ScriptID),
+			zap.String("name", execution.scriptInfo.Name),
+			zap.Int("exitCode", exitCode),
+			zap.String("exitErr", execution.exitErr),
+			zap.String("status", status),
+		)
 	})
 
 }
