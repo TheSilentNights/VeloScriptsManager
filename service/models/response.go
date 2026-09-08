@@ -13,3 +13,18 @@ type ExecutionStatusInfo struct {
 	ExitCode     int       `json:"exitCode"` // -1 while still running
 	Error        string    `json:"error"`
 }
+
+type EventInfoResponse struct {
+	EventId   string      `json:"eventId"`
+	Type      string      `json:"type"`
+	EventData interface{} `json:"event"`
+}
+
+type FileChangeEventInfo struct {
+	Path string `json:"path"`
+}
+
+type TimeEventInfo struct {
+	Interval time.Duration `json:"interval"`
+	Repeat   bool          `json:"repeat"`
+}

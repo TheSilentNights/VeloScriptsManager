@@ -18,8 +18,8 @@ const FileChangeEventID = "file_change_event"
 
 // map by path
 var (
-	registry   = make(map[string]*FileChangeEvent)
-	registryMu sync.Mutex
+	fileChangeEventRegistry     = make(map[string]*FileChangeEvent)
+	fileChangeEventRegistryLock sync.Mutex
 )
 
 func RegisterFileChangeEvent(path string, call func()) {
@@ -28,13 +28,13 @@ func RegisterFileChangeEvent(path string, call func()) {
 		call: call,
 	}
 
-	registryMu.Lock()
-	event, ok := registry[path]
+	fileChangeEventRegistryLock.Lock()
+	event, ok := fileChangeEventRegistry[path]
 	if ok {
 		event.mu.Lock()
 		event.Event.subscribers = append(event.Event.subscribers, subscriber)
 		event.mu.Unlock()
-		registryMu.Unlock()
+		fileChangeEventRegistryLock.Unlock()
 		return
 	}
 
@@ -45,8 +45,8 @@ func RegisterFileChangeEvent(path string, call func()) {
 		},
 		Path: path,
 	}
-	registry[path] = event
-	registryMu.Unlock()
+	fileChangeEventRegistry[path] = event
+	fileChangeEventRegistryLock.Unlock()
 
 	launchNewWatcher(path, event)
 }
@@ -55,17 +55,17 @@ func launchNewWatcher(path string, fileChangeEvent *FileChangeEvent) {
 	watcher, err := fsnotify.NewWatcher()
 
 	if err != nil {
-		registryMu.Lock()
-		delete(registry, path)
-		registryMu.Unlock()
+		fileChangeEventRegistryLock.Lock()
+		delete(fileChangeEventRegistry, path)
+		fileChangeEventRegistryLock.Unlock()
 		return
 	}
 
 	//add a path
 	if err := watcher.Add(path); err != nil {
-		registryMu.Lock()
-		delete(registry, path)
-		registryMu.Unlock()
+		fileChangeEventRegistryLock.Lock()
+		delete(fileChangeEventRegistry, path)
+		fileChangeEventRegistryLock.Unlock()
 		watcher.Close()
 		return
 	}
@@ -78,6 +78,8 @@ func launchNewWatcher(path string, fileChangeEvent *FileChangeEvent) {
 					return
 				}
 
+				// make a copy of subscribers
+				// to avoid race condition
 				fileChangeEvent.mu.Lock()
 				subscribers := make([]*Subscriber, len(fileChangeEvent.subscribers))
 				copy(subscribers, fileChangeEvent.subscribers)
@@ -91,10 +93,23 @@ func launchNewWatcher(path string, fileChangeEvent *FileChangeEvent) {
 				if !ok {
 					return
 				}
-				//todo: handle error
+				//TODO: handle error
 				println(err)
 			}
 		}
 	}()
 
+}
+
+func GetFileChangeEventRegistry() map[string]*FileChangeEvent {
+	fileChangeEventRegistryLock.Lock()
+	defer fileChangeEventRegistryLock.Unlock()
+
+	//copy registry
+	fileChangeEventRegistryCopy := make(map[string]*FileChangeEvent)
+	for k, v := range fileChangeEventRegistry {
+		fileChangeEventRegistryCopy[k] = v
+	}
+
+	return fileChangeEventRegistryCopy
 }

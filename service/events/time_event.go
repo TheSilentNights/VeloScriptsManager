@@ -8,7 +8,9 @@ import (
 
 type TimeEvent struct {
 	Event
-	timer *time.Timer
+	Interval int
+	Repeat   bool
+	timer    *time.Timer
 }
 
 const TimeEventID = "time_event"
@@ -18,7 +20,7 @@ var (
 	timeEventRegistryLock sync.Mutex
 )
 
-func registerTimeEvent(afterSeconds int, call func()) {
+func RegisterTimeEvent(afterSeconds int, repeat bool, call func()) {
 	subscriber := &Subscriber{
 		call: call,
 	}
@@ -38,12 +40,30 @@ func registerTimeEvent(afterSeconds int, call func()) {
 
 	timeEventRegistry[timeEvent.ID] = timeEvent
 
-	go func(timeEvent *TimeEvent) {
-		<-timer.C
-		for _, subscriber := range timeEvent.Event.subscribers {
-			subscriber.call()
-		}
-		timeEvent.timer.Stop()
-	}(timeEvent)
+	go waitForTime(timeEvent)
+}
 
+func waitForTime(timeEvent *TimeEvent) {
+	<-timeEvent.timer.C
+	for _, subscriber := range timeEvent.Event.subscribers {
+		subscriber.call()
+	}
+	if timeEvent.Repeat {
+		timeEvent.timer.Reset(time.Duration(timeEvent.Interval) * time.Second)
+	} else {
+		timeEvent.timer.Stop()
+	}
+}
+
+func GetTimeEventRegistry() map[string]*TimeEvent {
+	timeEventRegistryLock.Lock()
+	defer timeEventRegistryLock.Unlock()
+
+	//copy registry
+	timeEventRegistryCopy := make(map[string]*TimeEvent)
+	for k, v := range timeEventRegistry {
+		timeEventRegistryCopy[k] = v
+	}
+
+	return timeEventRegistryCopy
 }
