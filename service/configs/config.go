@@ -1,131 +1,77 @@
 package configs
 
 import (
-	"encoding/json"
-	"os"
-	"path/filepath"
+	"errors"
 	"sync"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
-	FontSize int `json:"fontSize"`
+	FontSize               int      `json:"font_size"`
+	FrequentlyUsedCommands []string `json:"frequently_used_commands"`
 }
 
 var (
-	globalConfig *Config
-	configPath   string
-	configMu     sync.RWMutex
-	initialized  bool
+	globalConfig  *Config
+	configPath    string
+	viperInstance *viper.Viper
+	configLock    sync.RWMutex
+	initialized   bool
 )
 
 // InitConfig loads (or creates) the config file. A failed attempt is not
 // sticky: the next call retries instead of silently reporting success.
 func InitConfig(path string) error {
-	configMu.Lock()
-	defer configMu.Unlock()
 
 	if initialized {
 		return nil
 	}
 
-	cfg := &Config{}
-	if err := cfg.LoadOrCreate(path); err != nil {
+	configLock.Lock()
+	defer configLock.Unlock()
+
+	viperInstance = viper.New()
+	viperInstance.SetConfigFile(path)
+	viperInstance.SetConfigType("json")
+
+	injectDefaultValue()
+
+	var fileNotFoundError viper.ConfigFileNotFoundError
+
+	if err := viperInstance.ReadInConfig(); err != nil {
+		if errors.As(err, &fileNotFoundError) {
+			// generate config file
+			viperInstance.SafeWriteConfig()
+		}
+	}
+
+	var cfg Config
+
+	if err := viperInstance.Unmarshal(&cfg); err != nil {
 		return err
 	}
 
-	globalConfig = cfg
+	globalConfig = &cfg
 	configPath = path
 	initialized = true
 	return nil
 }
 
-func GetConfig() Config {
-	configMu.RLock()
-	defer configMu.RUnlock()
-
-	if globalConfig == nil {
-		return Config{}
-	}
-
-	return *globalConfig
+func injectDefaultValue() {
+	viperInstance.SetDefault("font_size", 14)
+	viperInstance.SetDefault("frequently_used_commands", make([]string, 0))
 }
 
-func SetConfig(c Config) error {
-	configMu.Lock()
-	defer configMu.Unlock()
-
-	if globalConfig == nil {
-		return os.ErrInvalid
-	}
-
-	*globalConfig = c
-	return globalConfig.SaveConfig(configPath)
+func GetConfig() *Config {
+	return globalConfig
 }
 
-func Update(fn func(*Config)) error {
-	configMu.Lock()
-	defer configMu.Unlock()
-
-	if globalConfig == nil {
-		return os.ErrInvalid
-	}
-
-	//fn updates the config
-	fn(globalConfig)
-
-	return globalConfig.SaveConfig(configPath)
+func SetConfig(cfg Config) error {
+	globalConfig = &cfg
+	return SaveConfig()
 }
 
-func (config *Config) LoadConfig(path string) error {
-	result, errConfig := os.ReadFile(path)
-
-	if errConfig != nil {
-		return errConfig
-	}
-
-	//prase json to obj
-	errJson := json.Unmarshal(result, config)
-
-	if errJson != nil {
-		return errJson
-	}
-
-	return nil
-}
-
-func (config *Config) LoadOrCreate(path string) error {
-	dir := filepath.Dir(path)
-
-	err := os.MkdirAll(dir, 0755)
-
-	if err != nil {
-		return err
-	}
-
-	_, osErr := os.Stat(path)
-	if os.IsNotExist(osErr) {
-		osCreateErr := os.WriteFile(path, []byte("{}"), 0755)
-
-		if osCreateErr != nil {
-			return osCreateErr
-		}
-	}
-
-	return config.LoadConfig(path)
-}
-
-func (config *Config) SaveConfig(path string) error {
-
-	data, errJson := json.Marshal(config)
-
-	if errJson != nil {
-		return errJson
-	}
-
-	if errOS := os.WriteFile(path, data, 0755); errOS != nil {
-		return errOS
-	}
-
-	return nil
-
+func SaveConfig() error {
+	return viperInstance.WriteConfig()
 }

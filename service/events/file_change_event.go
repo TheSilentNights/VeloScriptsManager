@@ -89,12 +89,10 @@ func launchNewWatcher(path string, fileChangeEvent *FileChangeEvent) {
 					v.call()
 				}
 
-			case err, ok := <-watcher.Errors:
+			case _, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				//TODO: handle error
-				println(err)
 			}
 		}
 	}()
