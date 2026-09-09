@@ -7,11 +7,11 @@ import (
 	"sync"
 
 	"github.com/spf13/viper"
+	"go.yaml.in/yaml/v3"
 )
 
 type Config struct {
-	FontSize               int      `json:"font_size"`
-	FrequentlyUsedCommands []string `json:"frequently_used_commands"`
+	FontSize int `json:"font_size"`
 }
 
 var (
@@ -35,9 +35,7 @@ func InitConfig(path string) error {
 
 	viperInstance = viper.New()
 	viperInstance.SetConfigFile(path)
-	viperInstance.SetConfigType("json")
-
-	injectDefaultValue()
+	viperInstance.SetConfigType("yaml")
 
 	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
 	if err != nil && os.IsNotExist(err) {
@@ -47,9 +45,15 @@ func InitConfig(path string) error {
 		}
 
 		file, err = os.OpenFile(path, os.O_CREATE, 0644)
-		count, err := file.Write([]byte("{}"))
 
-		if count != 2 {
+		value, err := yaml.Marshal(GetDefaultValue())
+		if err != nil {
+			return err
+		}
+
+		count, err := file.Write(value)
+
+		if count != len(value) {
 			return errors.New("写入配置文件失败: 配置文件内容为空")
 		}
 
@@ -75,8 +79,10 @@ func InitConfig(path string) error {
 	return nil
 }
 
-func injectDefaultValue() {
-	viperInstance.SetDefault("font_size", 12)
+func GetDefaultValue() Config {
+	return Config{
+		FontSize: 14,
+	}
 }
 
 func GetConfig() *Config {

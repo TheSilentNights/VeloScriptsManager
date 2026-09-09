@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github/TheSilentNights/VeloScriptsManager/service/executor"
+	"github/TheSilentNights/VeloScriptsManager/service/logs"
 	"github/TheSilentNights/VeloScriptsManager/service/utils"
 	"log"
 	"net/http"
@@ -38,7 +39,9 @@ func main() {
 		dataDir = "./data"
 	}
 
-	if err := configs.InitConfig(dataDir + "/config.json"); err != nil {
+	logs.InitLogger(dataDir + "/veloscriptsmanager-server.log")
+
+	if err := configs.InitConfig(dataDir + "/config.yaml"); err != nil {
 		log.Println(err.Error())
 		return
 	}

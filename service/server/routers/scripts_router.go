@@ -3,10 +3,12 @@ package routers
 import (
 	"errors"
 	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
+	"github/TheSilentNights/VeloScriptsManager/service/logs"
 	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"github/TheSilentNights/VeloScriptsManager/service/services"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type ScriptsRouter struct {
@@ -171,6 +173,8 @@ func (router *ScriptsRouter) UpdateScript(c *gin.Context) {
 		})
 		return
 	}
+
+	logs.Logger.Info("update script success", zap.String("scriptId", req.Id))
 
 	c.JSON(200, gin.H{
 		"message": "success",

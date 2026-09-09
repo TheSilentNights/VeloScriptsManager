@@ -98,7 +98,7 @@ func (router *Router) updateConfig(c *gin.Context) {
 		return
 	}
 
-	//TODO: setValue before save
+	configs.SetConfig(*req)
 	err := configs.SaveConfig()
 	if err != nil {
 		c.JSON(500, gin.H{
