@@ -17,3 +17,8 @@ tasks:
     dir: "./service"
     cmds:
       - "go tool air"
+
+  build-archieve:
+    dir: "./ui"
+    cmds:
+      - "yarn run package:win"
