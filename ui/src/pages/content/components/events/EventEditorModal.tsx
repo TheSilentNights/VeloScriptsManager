@@ -39,17 +39,17 @@ export function EventEditorModal({
         setSubmitting(true);
         try {
             const values = await form.validateFields();
-            const executeScript = {id: values.scriptId};
+            const executeScripts = values.scriptIds.map((id: string) => ({id: id}));
             if (eventType === "fileChange") {
                 await onSubmit({
                     path: values.path!,
-                    execute_script: executeScript,
+                    execute_scripts: executeScripts,
                 });
             } else {
                 await onSubmit({
                     interval: values.interval!,
                     repeat: values.repeat ?? false,
-                    execute_script: executeScript,
+                    execute_scripts: executeScripts,
                 });
             }
         } finally {
@@ -116,11 +116,12 @@ export function EventEditorModal({
                 )}
 
                 <Form.Item
-                    label="触发脚本 (execute_script.id)"
-                    name="scriptId"
-                    rules={[{required: true, message: "请选择事件触发时要执行的脚本"}]}
+                    label="触发脚本 (execute_scripts[].id)"
+                    name="scriptIds"
+                    rules={[{required: true, type: "array", message: "请选择事件触发时要执行的脚本"}]}
                 >
                     <Select
+                        mode="multiple"
                         placeholder="选择事件触发时要执行的脚本"
                         defaultActiveFirstOption={false}
                         options={scripts.map((s) => ({label: s.name, value: s.id}))}

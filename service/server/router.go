@@ -98,8 +98,7 @@ func (router *Router) updateConfig(c *gin.Context) {
 		return
 	}
 
-	configs.SetConfig(*req)
-	err := configs.SaveConfig()
+	err := configs.SetConfig(req)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"message": "update config failed",

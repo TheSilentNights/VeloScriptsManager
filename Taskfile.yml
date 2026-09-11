@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+tasks:
+  launch-dev:
+    deps:
+      - task: run-yarn
+      - task: run-go
+
+  run-yarn:
+    dir: "./ui"
+    cmds:
+      - "yarn run dev"
+
+  run-go:
+    dir: "./service"
+    cmds:
+      - "go tool air"

@@ -41,12 +41,12 @@ type ExecuteScriptRequest struct {
 }
 
 type RegisterFileChangeEventRequest struct {
-	Path                 string `form:"path" json:"path"`
-	ExecuteScriptRequest `json:"execute_script"`
+	Path           string                 `form:"path" json:"path"`
+	ExecuteScripts []ExecuteScriptRequest `json:"execute_scripts"`
 }
 
 type RegisterTimeEventRequest struct {
-	Interval             int  `form:"interval" json:"interval"` // 单位：秒
-	Repeat               bool `form:"repeat" json:"repeat"`     // 是否重复执行
-	ExecuteScriptRequest `json:"execute_script"`
+	Interval       int                    `form:"interval" json:"interval"` // 单位：秒
+	Repeat         bool                   `form:"repeat" json:"repeat"`     // 是否重复执行
+	ExecuteScripts []ExecuteScriptRequest `json:"execute_scripts"`
 }

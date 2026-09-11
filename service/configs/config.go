@@ -11,7 +11,7 @@ import (
 )
 
 type Config struct {
-	FontSize int `json:"font_size"`
+	FontSize int `yaml:"font_size" json:"font_size"`
 }
 
 var (
@@ -46,7 +46,7 @@ func InitConfig(path string) error {
 
 		file, err = os.OpenFile(path, os.O_CREATE, 0644)
 
-		value, err := yaml.Marshal(GetDefaultValue())
+		value, err := yaml.Marshal(getDefaultConfig())
 		if err != nil {
 			return err
 		}
@@ -67,34 +67,40 @@ func InitConfig(path string) error {
 		return err
 	}
 
-	var cfg Config
-
-	if err := viperInstance.Unmarshal(&cfg); err != nil {
-		return err
-	}
-
-	globalConfig = &cfg
+	globalConfig = fromViperToConfig()
 	configPath = path
 	initialized = true
 	return nil
 }
 
-func GetDefaultValue() Config {
-	return Config{
+func getDefaultConfig() *Config {
+	return &Config{
 		FontSize: 14,
 	}
+}
+
+func fromViperToConfig() *Config {
+	var cfg Config
+
+	cfg.FontSize = viperInstance.GetInt("font_size")
+	return &cfg
+}
+
+func fromConfigToViper(cfg *Config) {
+	viperInstance.Set("font_size", cfg.FontSize)
 }
 
 func GetConfig() *Config {
 	return globalConfig
 }
 
-func SetConfig(cfg Config) error {
-	globalConfig = &cfg
-	return SaveConfig()
+func SetConfig(cfg *Config) error {
+	globalConfig = cfg
+	fromConfigToViper(cfg)
+	return saveConfig()
 }
 
-func SaveConfig() error {
+func saveConfig() error {
 	if viperInstance == nil {
 		return errors.New("viper not initialized")
 	}

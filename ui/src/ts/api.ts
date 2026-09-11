@@ -166,13 +166,13 @@ export interface ExecuteScriptPayload {
 
 export interface FileChangeEventPayload {
     path: string
-    execute_script: ExecuteScriptPayload
+    execute_scripts: ExecuteScriptPayload[]
 }
 
 export interface TimeEventPayload {
     interval: number
     repeat: boolean
-    execute_script: ExecuteScriptPayload
+    execute_scripts: ExecuteScriptPayload[]
 }
 
 export function registerFileChangeEvent(payload: FileChangeEventPayload): Promise<void> {
@@ -184,7 +184,7 @@ export function registerTimeEvent(payload: TimeEventPayload): Promise<void> {
 }
 
 export interface ConfigPayload {
-    fontSize: number
+    font_size: number
 }
 
 export function fetchConfig(): Promise<ConfigPayload> {
