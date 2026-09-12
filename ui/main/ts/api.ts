@@ -11,6 +11,7 @@ export function initBase(): Promise<void> {
     if (!baseReady) {
         baseReady = (async () => {
             const port = await window.electronAPI.getServerPort();
+            console.log(port)
             if (!port) {
                 throw new Error("failed to resolve server port");
             }

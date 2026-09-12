@@ -22,10 +22,11 @@ function createWindow() {
 
   // 根据 dev 环境变量选择加载地址
   if (process.env.VITE_DEV_SERVER_URL) {
-    win.loadURL(process.env.VITE_DEV_SERVER_URL)
+    //load main.html
+    win.loadURL(process.env.VITE_DEV_SERVER_URL + '/main/index.html')
     win.webContents.openDevTools()
   } else {
-    win.loadFile(path.join(__dirname, '../index.html'))
+    win.loadFile(path.join(__dirname, '../renderer/main/index.html'))
   }
 
   win.on('maximize', () => {
@@ -39,7 +40,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
 
-  const tray = new Tray(path.join(__dirname, '../icon.png'))
+  const tray = new Tray(path.join(__dirname, '../renderer/icon.png'))
   const contextMenu = Menu.buildFromTemplate([
     { role: 'quit' }
   ])

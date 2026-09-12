@@ -10,17 +10,20 @@ await ViteBuild({
 const viteServer = await createServer({
   configFile: 'vite.config.ts',
   server: {
-    host: '127.0.0.1', 
+    host: '127.0.0.1',
+    port: 5173,
   },
 })
+
+
 
 await viteServer.listen()
 
 const address = viteServer.httpServer?.address()
 const devUrl =
   typeof address === 'object' && address !== null
-    ? `http://localhost:${address.port}`
-    : 'http://localhost:5173'
+    ? `http://${address.address}:${address.port}`
+    : 'http://127.0.0.1:5173'
 
 let electronProcess: ChildProcess | null = null
 

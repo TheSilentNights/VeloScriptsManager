@@ -9,7 +9,7 @@
   ],
   "extraResources": [
     {
-      "from": "resources/server.exe",
+      "from": "go-build/server.exe",
       "to": "server.exe"
     }
   ],
