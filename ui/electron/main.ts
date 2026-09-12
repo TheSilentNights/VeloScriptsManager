@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, Tray } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {getServerPort, startServer, stopServer} from "./launcher.ts"
@@ -38,6 +38,13 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+
+  const tray = new Tray(path.join(__dirname, '../icon.png'))
+  const contextMenu = Menu.buildFromTemplate([
+    { role: 'quit' }
+  ])
+  tray.setContextMenu(contextMenu)
+
   if (!isDev){
     try {
       await startServer()
@@ -71,7 +78,7 @@ ipcMain.on('window-close', () => {
 ipcMain.handle('get-server-port', () => getServerPort())
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  // prepare for tray menu
 })
 
 app.on('before-quit', () => {

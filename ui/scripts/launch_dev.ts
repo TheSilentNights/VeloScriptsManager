@@ -1,7 +1,11 @@
-import { createServer } from 'vite'
+import { createServer, build as ViteBuild } from 'vite'
 import { context } from 'esbuild'
 import { spawn, type ChildProcess } from 'node:child_process'
 import electronPath from 'electron'
+
+await ViteBuild({
+  configFile: 'vite.config.ts',
+})
 
 const viteServer = await createServer({
   configFile: 'vite.config.ts',
@@ -9,6 +13,7 @@ const viteServer = await createServer({
     host: '127.0.0.1', 
   },
 })
+
 await viteServer.listen()
 
 const address = viteServer.httpServer?.address()

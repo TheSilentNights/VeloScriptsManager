@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 
-const outDir = path.resolve('resources')
+const outDir = path.resolve('go-build')
 mkdirSync(outDir, { recursive: true })
 
 console.log('Building Go server...')
