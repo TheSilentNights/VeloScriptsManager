@@ -41,7 +41,7 @@ export function SettingsPage() {
         if (fontSize === null) return;
         setSaving(true);
         try {
-            await saveConfig({font_size: fontSize});
+            await saveConfig({font_size: fontSize, shortcuts: useConfigStore.getState().shortcuts});
             message.success("已保存设置");
         } catch (e) {
             console.log(e);

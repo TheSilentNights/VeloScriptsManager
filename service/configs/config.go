@@ -10,8 +10,17 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
+const shortcutSlotCount = 10
+
+type ShortcutSlot struct {
+	ScriptID       string   `yaml:"script_id" json:"script_id" mapstructure:"script_id"`
+	Command        []string `yaml:"command" json:"command" mapstructure:"command"`
+	EnvironmentsID []string `yaml:"environments_id" json:"environments_id" mapstructure:"environments_id"`
+}
+
 type Config struct {
-	FontSize int `yaml:"font_size" json:"font_size"`
+	FontSize  int            `yaml:"font_size" json:"font_size"`
+	Shortcuts []ShortcutSlot `yaml:"shortcuts" json:"shortcuts"`
 }
 
 var (
@@ -75,7 +84,8 @@ func InitConfig(path string) error {
 
 func getDefaultConfig() *Config {
 	return &Config{
-		FontSize: 14,
+		FontSize:  14,
+		Shortcuts: normalizeShortcuts(nil),
 	}
 }
 
@@ -83,11 +93,35 @@ func fromViperToConfig() *Config {
 	var cfg Config
 
 	cfg.FontSize = viperInstance.GetInt("font_size")
+	_ = viperInstance.UnmarshalKey("shortcuts", &cfg.Shortcuts)
+	cfg.Shortcuts = normalizeShortcuts(cfg.Shortcuts)
 	return &cfg
 }
 
 func fromConfigToViper(cfg *Config) {
 	viperInstance.Set("font_size", cfg.FontSize)
+	viperInstance.Set("shortcuts", cfg.Shortcuts)
+}
+
+func normalizeShortcuts(shortcuts []ShortcutSlot) []ShortcutSlot {
+	normalized := make([]ShortcutSlot, shortcutSlotCount)
+	for i := range normalized {
+		normalized[i] = ShortcutSlot{
+			Command:        []string{},
+			EnvironmentsID: []string{},
+		}
+	}
+	for i := 0; i < len(shortcuts) && i < shortcutSlotCount; i++ {
+		slot := shortcuts[i]
+		if slot.Command == nil {
+			slot.Command = []string{}
+		}
+		if slot.EnvironmentsID == nil {
+			slot.EnvironmentsID = []string{}
+		}
+		normalized[i] = slot
+	}
+	return normalized
 }
 
 func GetConfig() *Config {

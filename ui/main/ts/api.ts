@@ -179,8 +179,15 @@ export function registerTimeEvent(payload: TimeEventPayload): Promise<void> {
     return sendPost<void>("/api/v1/event/registerTimeEvent", payload);
 }
 
+export interface ShortcutSlotPayload {
+    script_id: string
+    command: string[]
+    environments_id: string[]
+}
+
 export interface ConfigPayload {
     font_size: number
+    shortcuts: ShortcutSlotPayload[] | null
 }
 
 export function fetchConfig(): Promise<ConfigPayload> {
