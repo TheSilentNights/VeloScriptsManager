@@ -12,6 +12,7 @@ declare global {
       sendMessage: (msg: string) => void
       minimizeWindow: () => void
       maximizeWindow: () => Promise<boolean>
+      minimizeToTray: () => void
       closeWindow: () => void
       getServerPort: () => Promise<number | null>
       onMaximizeChange: (callback: (isMaximized: boolean) => void) => void

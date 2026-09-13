@@ -1,5 +1,5 @@
-import {type CSSProperties, useEffect, useState} from "react";
-import {Layout, Menu, Typography, type MenuProps, Button, Tooltip} from "antd";
+import { type CSSProperties, useEffect, useState } from "react";
+import { Layout, Menu, Typography, type MenuProps, Button, Tooltip } from "antd";
 import {
     SettingOutlined,
     CodeOutlined,
@@ -14,13 +14,15 @@ import {
     NotificationOutlined,
 } from "@ant-design/icons";
 import "./AppShell.less";
-import {ScriptsPage} from "./content/ScriptsPage.tsx";
-import {ExecutionsPage} from "./content/ExecutionsPage.tsx";
-import {EnvironmentsPage} from "./content/EnvironmentsPage.tsx";
-import {SettingsPage} from "./content/SettingsPage.tsx";
-import {EventsPage} from "./content/EventsPage.tsx";
+import { ScriptsPage } from "./content/ScriptsPage.tsx";
+import { ExecutionsPage } from "./content/ExecutionsPage.tsx";
+import { EnvironmentsPage } from "./content/EnvironmentsPage.tsx";
+import { SettingsPage } from "./content/SettingsPage.tsx";
+import { EventsPage } from "./content/EventsPage.tsx";
+import minimizeToTrayIcon from "../assets/arrow-down.svg";
 
-const {Sider, Content} = Layout;
+
+const { Sider, Content } = Layout;
 
 type PageKey = "environments" | "scripts" | "executions" | "events" | "settings";
 
@@ -31,17 +33,17 @@ const menuItems: MenuItem[] = [
         type: "group",
         label: "Operations",
         children: [
-            {key: "scripts", icon: <CodeOutlined/>, label: "脚本管理"},
-            {key: "executions", icon: <DesktopOutlined/>, label: "Executions"},
-            {key: "events", icon: <NotificationOutlined/>, label: "事件"},
+            { key: "scripts", icon: <CodeOutlined />, label: "脚本管理" },
+            { key: "executions", icon: <DesktopOutlined />, label: "Executions" },
+            { key: "events", icon: <NotificationOutlined />, label: "事件" },
         ],
     },
     {
         type: "group",
         label: "Configuration",
         children: [
-            {key: "environments", icon: <ApiOutlined/>, label: "环境配置"},
-            {key: "settings", icon: <SettingOutlined/>, label: "设置"},
+            { key: "environments", icon: <ApiOutlined />, label: "环境配置" },
+            { key: "settings", icon: <SettingOutlined />, label: "设置" },
         ],
     },
 ];
@@ -49,17 +51,17 @@ const menuItems: MenuItem[] = [
 const renderPage = (pageKey: PageKey) => {
     switch (pageKey) {
         case "scripts":
-            return <ScriptsPage/>
+            return <ScriptsPage />
         case "executions":
-            return <ExecutionsPage/>
+            return <ExecutionsPage />
         case "events":
-            return <EventsPage/>
+            return <EventsPage />
         case "environments":
-            return <EnvironmentsPage/>
+            return <EnvironmentsPage />
         case "settings":
-            return <SettingsPage/>
+            return <SettingsPage />
         default:
-            return <ScriptsPage/>
+            return <ScriptsPage />
     }
 }
 
@@ -72,23 +74,23 @@ export function AppShell() {
     }
 
     return (
-        <Layout style={{height: "100%", background: "#ffffff"}}>
+        <Layout style={{ height: "100%", background: "#ffffff" }}>
             <Header
                 collapsed={collapsed}
                 onCollapseChange={onCollapseChange}
             />
-            <Layout style={{height: "100%", background: "#f6f8fa"}}>
+            <Layout style={{ height: "100%", background: "#f6f8fa" }}>
                 <Sider width={230} className="glass-sider" style={siderStyle} trigger={null} collapsible collapsed={collapsed}>
                     <Menu
                         mode="inline"
                         items={menuItems}
                         selectedKeys={[page]}
                         onClick={(menuInfo) => setPage(menuInfo.key as PageKey)}
-                        style={{background: "transparent", border: "none", paddingTop: 8}}
+                        style={{ background: "transparent", border: "none", paddingTop: 8 }}
                     />
                 </Sider>
                 <Layout style={contentLayoutStyle}>
-                    <Content style={{height: "100%", padding: 28, overflow: "auto"}}>
+                    <Content style={{ height: "100%", padding: 28, overflow: "auto" }}>
                         {renderPage(page)}
                     </Content>
                 </Layout>
@@ -97,7 +99,7 @@ export function AppShell() {
     );
 }
 
-function Header({collapsed, onCollapseChange}: { collapsed: boolean, onCollapseChange: () => void }) {
+function Header({ collapsed, onCollapseChange }: { collapsed: boolean, onCollapseChange: () => void }) {
     const [isMaximized, setIsMaximized] = useState(false);
 
     useEffect(() => {
@@ -110,7 +112,7 @@ function Header({collapsed, onCollapseChange}: { collapsed: boolean, onCollapseC
                 <Tooltip title={collapsed ? "展开侧栏" : "折叠侧栏"}>
                     <Button
                         type="text"
-                        icon={collapsed ? <MenuUnfoldOutlined/> : <MenuFoldOutlined/>}
+                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                         onClick={() => onCollapseChange()}
                         style={{
                             fontSize: '16px',
@@ -120,18 +122,34 @@ function Header({collapsed, onCollapseChange}: { collapsed: boolean, onCollapseC
                         }}
                     ></Button>
                 </Tooltip>
-                <Typography.Text style={{fontSize: 16, fontWeight: 700, color: "#111827"}}>
+                <Typography.Text style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>
                     VeloScriptsManager
                 </Typography.Text>
             </div>
             <div style={windowControlsStyle}>
+                <Tooltip title="最小化到托盘">
+                    <button
+                        type="button"
+                        style={windowButtonStyle}
+                        onClick={() => window.electronAPI.minimizeToTray()}
+                    >
+                        <img
+                            src={minimizeToTrayIcon}
+                            alt="Arrow Down Right"
+                            style={{
+                                width: 22,
+                                height: 22
+                            }}
+                        />
+                    </button>
+                </Tooltip>
                 <Tooltip title="最小化">
                     <button
                         type="button"
                         style={windowButtonStyle}
                         onClick={() => window.electronAPI.minimizeWindow()}
                     >
-                        <MinusOutlined/>
+                        <MinusOutlined />
                     </button>
                 </Tooltip>
                 <Tooltip title={isMaximized ? "还原" : "最大化"}>
@@ -142,7 +160,7 @@ function Header({collapsed, onCollapseChange}: { collapsed: boolean, onCollapseC
                             setIsMaximized(await window.electronAPI.maximizeWindow())
                         }}
                     >
-                        {isMaximized ? <FullscreenExitOutlined/> : <BorderOutlined/>}
+                        {isMaximized ? <FullscreenExitOutlined /> : <BorderOutlined />}
                     </button>
                 </Tooltip>
                 <Tooltip title="关闭">
@@ -151,7 +169,7 @@ function Header({collapsed, onCollapseChange}: { collapsed: boolean, onCollapseC
                         style={closeButtonStyle}
                         onClick={() => window.electronAPI.closeWindow()}
                     >
-                        <CloseOutlined/>
+                        <CloseOutlined />
                     </button>
                 </Tooltip>
             </div>

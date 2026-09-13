@@ -65,6 +65,10 @@ app.whenReady().then(async () => {
   createWindow()
 })
 
+ipcMain.on('window-minimize-to-tray', () => {
+  BrowserWindow.getFocusedWindow()?.hide()
+})
+
 ipcMain.on('window-minimize', () => {
   BrowserWindow.getFocusedWindow()?.minimize()
 })

@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximizeWindow: () => {
     return ipcRenderer.invoke('window-maximize')
   },
+  minimizeToTray: () => ipcRenderer.send('window-minimize-to-tray'),
   closeWindow: () => ipcRenderer.send('window-close'),
   getServerPort: () => ipcRenderer.invoke('get-server-port'),
   onMaximizeChange: (callback: (isMaximized: boolean) => void) => {
