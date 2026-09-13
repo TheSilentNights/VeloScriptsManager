@@ -19,12 +19,16 @@ import { ExecutionsPage } from "./content/ExecutionsPage.tsx";
 import { EnvironmentsPage } from "./content/EnvironmentsPage.tsx";
 import { SettingsPage } from "./content/SettingsPage.tsx";
 import { EventsPage } from "./content/EventsPage.tsx";
+import KeyboardShortCutPage from "./content/KeyboardShortCutPage.tsx";
 import minimizeToTrayIcon from "../assets/arrow-down.svg";
+import keyboardIcon from "../assets/keyboard.svg";
+import KeyboardIcon from "./content/components/icons/KeyboardIcon.tsx";
+
 
 
 const { Sider, Content } = Layout;
 
-type PageKey = "environments" | "scripts" | "executions" | "events" | "settings";
+type PageKey = "environments" | "scripts" | "executions" | "events" | "settings" | "keyboardShortcuts";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -44,6 +48,10 @@ const menuItems: MenuItem[] = [
         children: [
             { key: "environments", icon: <ApiOutlined />, label: "环境配置" },
             { key: "settings", icon: <SettingOutlined />, label: "设置" },
+            { key: "keyboardShortcuts", icon: <KeyboardIcon style={{
+                width: 22,
+                height: 22
+            }}/>, label: "键盘快捷键" },
         ],
     },
 ];
@@ -60,6 +68,8 @@ const renderPage = (pageKey: PageKey) => {
             return <EnvironmentsPage />
         case "settings":
             return <SettingsPage />
+        case "keyboardShortcuts":
+            return <KeyboardShortCutPage />
         default:
             return <ScriptsPage />
     }
