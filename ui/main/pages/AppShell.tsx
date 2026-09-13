@@ -138,7 +138,9 @@ function Header({collapsed, onCollapseChange}: { collapsed: boolean, onCollapseC
                     <button
                         type="button"
                         style={windowButtonStyle}
-                        onClick={() => window.electronAPI.maximizeWindow()}
+                        onClick={async () => {
+                            setIsMaximized(await window.electronAPI.maximizeWindow())
+                        }}
                     >
                         {isMaximized ? <FullscreenExitOutlined/> : <BorderOutlined/>}
                     </button>

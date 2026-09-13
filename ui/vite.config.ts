@@ -12,8 +12,6 @@ export default defineConfig({
       input: {
         // 主窗口入口
         main: resolve(import.meta.dirname, './main/index.html'),
-        // 托盘弹出窗口入口
-        popup: resolve(import.meta.dirname, './popup/index.html'), 
       },
     },
   },

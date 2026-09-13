@@ -1,13 +1,13 @@
-import { app, BrowserWindow, ipcMain, Menu, Tray } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, screen, Tray, type Rectangle } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {getServerPort, startServer, stopServer} from "./launcher.ts"
+import { getServerPort, startServer, stopServer } from "./launcher.ts"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL
 
-
+let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -28,25 +28,32 @@ function createWindow() {
   } else {
     win.loadFile(path.join(__dirname, '../renderer/main/index.html'))
   }
-
-  win.on('maximize', () => {
-    win.webContents.send('window-maximize-change', true)
-  })
-
-  win.on('unmaximize', () => {
-    win.webContents.send('window-maximize-change', false)
-  })
+  mainWindow = win
 }
 
-app.whenReady().then(async () => {
-
-  const tray = new Tray(path.join(__dirname, '../renderer/icon.png'))
-  const contextMenu = Menu.buildFromTemplate([
-    { role: 'quit' }
+function generatePopupContext(): Electron.Menu {
+  return Menu.buildFromTemplate([
+    {
+      label: '退出',
+      role: 'quit' // 使用内置角色，自动处理退出逻辑
+    }
   ])
-  tray.setContextMenu(contextMenu)
+}
 
-  if (!isDev){
+
+app.whenReady().then(async () => {
+  const tray = new Tray(path.join(__dirname, '../renderer/icon.png'))
+
+  tray.on('click', () => {
+    if (mainWindow) {
+      mainWindow.show()
+    }
+  })
+
+  tray.setContextMenu(generatePopupContext())
+
+
+  if (!isDev) {
     try {
       await startServer()
     } catch (e) {
@@ -62,13 +69,15 @@ ipcMain.on('window-minimize', () => {
   BrowserWindow.getFocusedWindow()?.minimize()
 })
 
-ipcMain.on('window-maximize', () => {
+ipcMain.handle('window-maximize', async () => {
   const win = BrowserWindow.getFocusedWindow()
-  if (!win) return
+  if (!win) return false
   if (win.isMaximized()) {
     win.unmaximize()
+    return false
   } else {
     win.maximize()
+    return true
   }
 })
 
@@ -85,3 +94,4 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   stopServer()
 })
+

@@ -21,11 +21,6 @@ export function initBase(): Promise<void> {
     return baseReady;
 }
 
-http.interceptors.request.use(async (config) => {
-    await initBase();
-    return config;
-});
-
 
 interface ApiEnvelope<T> {
     code: number

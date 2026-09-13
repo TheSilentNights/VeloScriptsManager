@@ -11,7 +11,7 @@ declare global {
     electronAPI: {
       sendMessage: (msg: string) => void
       minimizeWindow: () => void
-      maximizeWindow: () => void
+      maximizeWindow: () => Promise<boolean>
       closeWindow: () => void
       getServerPort: () => Promise<number | null>
       onMaximizeChange: (callback: (isMaximized: boolean) => void) => void
