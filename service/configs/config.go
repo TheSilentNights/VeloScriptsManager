@@ -13,6 +13,7 @@ import (
 const shortcutSlotCount = 10
 
 type ShortcutSlot struct {
+	Key            string   `yaml:"key" json:"key" mapstructure:"key"`
 	ScriptID       string   `yaml:"script_id" json:"script_id" mapstructure:"script_id"`
 	Command        []string `yaml:"command" json:"command" mapstructure:"command"`
 	EnvironmentsID []string `yaml:"environments_id" json:"environments_id" mapstructure:"environments_id"`

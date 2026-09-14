@@ -10,6 +10,7 @@ const slotCount = 10;
 
 function normalizeShortcuts(shortcuts: ShortcutSlotPayload[] | null | undefined): ShortcutSlotPayload[] {
     const normalized: ShortcutSlotPayload[] = Array.from({length: slotCount}, () => ({
+        key: "",
         script_id: "",
         command: [],
         environments_id: [],
@@ -20,6 +21,7 @@ function normalizeShortcuts(shortcuts: ShortcutSlotPayload[] | null | undefined)
     for (let i = 0; i < shortcuts.length && i < slotCount; i++) {
         const slot = shortcuts[i];
         normalized[i] = {
+            key: slot.key ?? "",
             script_id: slot.script_id ?? "",
             command: slot.command ?? [],
             environments_id: slot.environments_id ?? [],

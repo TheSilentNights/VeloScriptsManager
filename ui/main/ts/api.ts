@@ -180,6 +180,7 @@ export function registerTimeEvent(payload: TimeEventPayload): Promise<void> {
 }
 
 export interface ShortcutSlotPayload {
+    key: string
     script_id: string
     command: string[]
     environments_id: string[]

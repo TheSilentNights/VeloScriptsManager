@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Menu, screen, Tray, type Rectangle } from 
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getServerPort, startServer, stopServer } from "./launcher.ts"
+import { registerKeyInGlobalShortcut, unregisterKeyInGlobalShortcut } from './keyboard.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -83,6 +84,14 @@ ipcMain.handle('window-maximize', async () => {
     win.maximize()
     return true
   }
+})
+
+ipcMain.on('register-key', (event, key) => {
+  registerKeyInGlobalShortcut(event.sender, key)
+})
+
+ipcMain.on('unregister-key', (_event, key) => {
+  unregisterKeyInGlobalShortcut(key)
 })
 
 ipcMain.on('window-close', () => {

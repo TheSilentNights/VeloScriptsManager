@@ -16,6 +16,9 @@ declare global {
       closeWindow: () => void
       getServerPort: () => Promise<number | null>
       onMaximizeChange: (callback: (isMaximized: boolean) => void) => void
+      registerKey: (key: string) => void
+      unregisterKey: (key: string) => void
+      onKeyPressed: (key: string, callback: () => void) => () => void
     }
   }
 }

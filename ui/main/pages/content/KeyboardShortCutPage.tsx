@@ -1,11 +1,71 @@
 import {useEffect, useState} from "react";
-import {App, Button, Card, Select, Space, Spin, Typography} from "antd";
-import {LoadingOutlined, ReloadOutlined, SaveOutlined} from "@ant-design/icons";
+import {App, Button, Card, Select, Space, Spin, Tag, Typography} from "antd";
+import {EditOutlined, LoadingOutlined, ReloadOutlined, SaveOutlined} from "@ant-design/icons";
 import {useConfigStore} from "../../store/configStore";
 import {useScriptStore} from "../../store/scriptStore";
 import {useEnvironmentStore} from "../../store/environmentStore";
 import type {Script} from "../../types/models";
 import type {ShortcutSlotPayload} from "../../ts/api";
+
+const modifierProps: Array<["ctrlKey" | "altKey" | "shiftKey" | "metaKey", string]> = [
+    ["ctrlKey", "Control"],
+    ["altKey", "Alt"],
+    ["shiftKey", "Shift"],
+    ["metaKey", "Super"],
+];
+
+const keyCodeMap: Record<string, string> = {
+    Space: "Space",
+    Tab: "Tab",
+    Backspace: "Backspace",
+    Delete: "Delete",
+    Insert: "Insert",
+    Home: "Home",
+    End: "End",
+    PageUp: "PageUp",
+    PageDown: "PageDown",
+    ArrowUp: "Up",
+    ArrowDown: "Down",
+    ArrowLeft: "Left",
+    ArrowRight: "Right",
+    Enter: "Return",
+    NumpadAdd: "numadd",
+    NumpadSubtract: "numsub",
+    NumpadMultiply: "nummult",
+    NumpadDivide: "numdiv",
+    NumpadDecimal: "numdec",
+    Minus: "-",
+    Equal: "=",
+    BracketLeft: "[",
+    BracketRight: "]",
+    Semicolon: ";",
+    Quote: "'",
+    Backquote: "`",
+    Backslash: "\\",
+    Comma: ",",
+    Period: ".",
+    Slash: "/",
+};
+
+function buildAccelerator(e: KeyboardEvent): string {
+    let mainKey: string | null = null;
+    if (/^Key[A-Z]$/.test(e.code)) {
+        mainKey = e.code.slice(3);
+    } else if (/^Digit[0-9]$/.test(e.code)) {
+        mainKey = e.code.slice(5);
+    } else if (/^Numpad[0-9]$/.test(e.code)) {
+        mainKey = "num" + e.code.slice(6);
+    } else if (/^F([1-9]|1[0-9]|2[0-4])$/.test(e.code)) {
+        mainKey = e.code;
+    } else if (e.code in keyCodeMap) {
+        mainKey = keyCodeMap[e.code];
+    }
+    if (mainKey === null) return "";
+    const modifiers = modifierProps
+        .filter(([prop]) => e[prop])
+        .map(([, name]) => name);
+    return [...modifiers, mainKey].join("+");
+}
 
 export default function KeyboardShortCutPage() {
     const {message} = App.useApp();
@@ -23,6 +83,7 @@ export default function KeyboardShortCutPage() {
     //stores the temporary script commands and environments
     const [draft, setDraft] = useState<ShortcutSlotPayload[] | null>(null);
     const [saving, setSaving] = useState(false);
+    const [recordingSlot, setRecordingSlot] = useState<number | null>(null);
 
     useEffect(() => {
         void loadConfig();
@@ -42,6 +103,44 @@ export default function KeyboardShortCutPage() {
         }
     }, [configError, message]);
 
+    useEffect(() => {
+        if (recordingSlot === null) return;
+        const handler = (e: KeyboardEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.key === "Escape") {
+                setRecordingSlot(null);
+                return;
+            }
+            if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return;
+            const accelerator = buildAccelerator(e);
+            if (accelerator === "") {
+                message.error("不支持的按键");
+                return;
+            }
+            const hasModifier = e.ctrlKey || e.altKey || e.shiftKey || e.metaKey;
+            if (!hasModifier && !/^F([1-9]|1[0-9]|2[0-4])$/.test(accelerator)) {
+                message.error("必须包含 Ctrl/Alt/Shift/Super 修饰键，或使用 F1-F24");
+                return;
+            }
+            const current = draft;
+            if (current === null || recordingSlot === null) return;
+            const dupIndex = current.findIndex(
+                (slot, index) => index !== recordingSlot && slot.key !== "" && slot.key === accelerator
+            );
+            if (dupIndex >= 0) {
+                message.error(`组合键 ${accelerator} 已被槽位 ${dupIndex + 1} 使用`);
+                return;
+            }
+            const next = [...current];
+            next[recordingSlot] = {...next[recordingSlot], key: accelerator};
+            setDraft(next);
+            setRecordingSlot(null);
+        };
+        window.addEventListener("keydown", handler, true);
+        return () => window.removeEventListener("keydown", handler, true);
+    }, [recordingSlot, draft, message]);
+
     const updateSlot = (index: number, slot: ShortcutSlotPayload) => {
         setDraft((prev) => {
             if (!prev) return prev;
@@ -54,6 +153,7 @@ export default function KeyboardShortCutPage() {
     const handleScriptChange = (index: number, value: string | undefined) => {
         const script = scripts.find((s) => s.id === value);
         updateSlot(index, {
+            key: draft?.[index]?.key ?? "",
             script_id: value ?? "",
             command: script ? [...script.command] : [],
             environments_id: script ? [...script.environments] : [],
@@ -117,6 +217,11 @@ export default function KeyboardShortCutPage() {
                                 slot={slot}
                                 scripts={scripts}
                                 nameOf={nameOf}
+                                recording={recordingSlot === index}
+                                recordingBlocked={recordingSlot !== null && recordingSlot !== index}
+                                onRecordStart={() => setRecordingSlot(index)}
+                                onRecordCancel={() => setRecordingSlot(null)}
+                                onKeyClear={() => updateSlot(index, {...slot, key: ""})}
                                 onScriptChange={(value) => handleScriptChange(index, value)}
                                 onCommandChange={(value) => updateSlot(index, {...slot, command: value})}
                                 onEnvironmentsChange={(value) => updateSlot(index, {...slot, environments_id: value})}
@@ -134,12 +239,30 @@ interface SlotCardProps {
     slot: ShortcutSlotPayload
     scripts: Script[]
     nameOf: (id: string) => string
+    recording: boolean
+    recordingBlocked: boolean
+    onRecordStart: () => void
+    onRecordCancel: () => void
+    onKeyClear: () => void
     onScriptChange: (value: string | undefined) => void
     onCommandChange: (value: string[]) => void
     onEnvironmentsChange: (value: string[]) => void
 }
 
-function SlotCard({index, slot, scripts, nameOf, onScriptChange, onCommandChange, onEnvironmentsChange}: SlotCardProps) {
+function SlotCard({
+        index,
+        slot,
+        scripts,
+        nameOf,
+        recording,
+        recordingBlocked,
+        onRecordStart,
+        onRecordCancel,
+        onKeyClear,
+        onScriptChange,
+        onCommandChange,
+        onEnvironmentsChange,
+    }: SlotCardProps) {
     const script = scripts.find((s) => s.id === slot.script_id);
     const scriptOptions = scripts.map((s) => ({
         label: s.name,
@@ -150,8 +273,41 @@ function SlotCard({index, slot, scripts, nameOf, onScriptChange, onCommandChange
     }
 
     return (
-        <Card size="small" title={`槽位 ${index + 1}`}>
+        <Card
+            size="small"
+            title={`槽位 ${index + 1}`}
+            style={recording ? {borderColor: "#4f46e5"} : undefined}
+        >
             <Space direction="vertical" style={{width: "100%"}} size={10}>
+                <div>
+                    <Typography.Text type="secondary" style={{fontSize: 12}}>
+                        注册按键
+                    </Typography.Text>
+                    <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8}}>
+                        {recording ? (
+                            <Typography.Text type="warning" style={{fontSize: 12}} onClick={onRecordCancel}>
+                                按下组合键，Esc 取消
+                            </Typography.Text>
+                        ) : slot.key ? (
+                            <Tag closable onClose={onKeyClear}>
+                                {slot.key}
+                            </Tag>
+                        ) : (
+                            <Typography.Text type="secondary" style={{fontSize: 12}}>
+                                未设置
+                            </Typography.Text>
+                        )}
+                        <Button
+                            size="small"
+                            icon={<EditOutlined/>}
+                            disabled={recordingBlocked}
+                            danger={recording}
+                            onClick={recording ? onRecordCancel : onRecordStart}
+                        >
+                            {recording ? "取消" : slot.key ? "重录" : "录制"}
+                        </Button>
+                    </div>
+                </div>
                 <div>
                     <Typography.Text type="secondary" style={{fontSize: 12}}>
                         绑定脚本
