@@ -6,6 +6,8 @@ import { registerKeyInGlobalShortcut, unregisterKeyInGlobalShortcut } from './ke
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+let tray: Tray | null = null
+
 const isDev = !!process.env.VITE_DEV_SERVER_URL
 
 let mainWindow: BrowserWindow | null = null
@@ -43,8 +45,8 @@ function generatePopupContext(): Electron.Menu {
 
 
 app.whenReady().then(async () => {
-  const tray = new Tray(path.join(__dirname, '../renderer/icon.png'))
-
+  tray = new Tray(path.join(__dirname, '../renderer/icon.png'))
+  
   tray.on('click', () => {
     if (mainWindow) {
       mainWindow.show()
@@ -106,5 +108,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   stopServer()
+  tray?.destroy()
 })
 
