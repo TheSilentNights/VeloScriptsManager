@@ -1,4 +1,4 @@
-import { ipcMain, webContents, type WebContents } from "electron";
+import { type WebContents } from "electron";
 import { globalShortcut } from "electron/main";
 
 //format: ${key}_pressed

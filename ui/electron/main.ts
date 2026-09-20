@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, screen, Tray, type Rectangle } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, Tray } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getServerPort, startServer, stopServer } from "./launcher.ts"
@@ -34,7 +34,7 @@ function createWindow() {
   mainWindow = win
 }
 
-function generatePopupContext(): Electron.Menu {
+function generatePopupContext(): Menu {
   return Menu.buildFromTemplate([
     {
       label: '退出',
