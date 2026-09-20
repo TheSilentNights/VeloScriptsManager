@@ -98,6 +98,7 @@ ipcMain.on('unregister-key', (_event, key) => {
 
 ipcMain.on('window-close', () => {
   BrowserWindow.getFocusedWindow()?.close()
+  tray?.destroy()
 })
 
 ipcMain.handle('get-server-port', () => getServerPort())
@@ -108,6 +109,5 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   stopServer()
-  tray?.destroy()
 })
 
