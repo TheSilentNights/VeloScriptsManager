@@ -110,11 +110,23 @@ export function executeScript(
     command: string[],
     environments: string[],
 ): Promise<void> {
-    return sendPost<void>("/api/v1/execution/execute", {
-        id,
-        command,
-        environmentsid: environments,
+    return executeScripts({
+        scripts: [
+            {
+                id: id,
+                command: command,
+                environmentsid: environments,
+            },
+        ],
     });
+}
+
+export interface ExecuteScriptsPayload {
+    scripts: ExecuteScriptPayload[]
+}
+
+export function executeScripts(payload: ExecuteScriptsPayload): Promise<void> {
+    return sendPost<void>("/api/v1/execution/execute", payload);
 }
 
 export function fetchEnvironments(): Promise<Environment[]> {
@@ -162,13 +174,13 @@ export interface ExecuteScriptPayload {
 
 export interface FileChangeEventPayload {
     path: string
-    execute_scripts: ExecuteScriptPayload[]
+    scripts: ExecuteScriptPayload[]
 }
 
 export interface TimeEventPayload {
     interval: number
     repeat: boolean
-    execute_scripts: ExecuteScriptPayload[]
+    scripts: ExecuteScriptPayload[]
 }
 
 export function registerFileChangeEvent(payload: FileChangeEventPayload): Promise<void> {
@@ -179,11 +191,15 @@ export function registerTimeEvent(payload: TimeEventPayload): Promise<void> {
     return sendPost<void>("/api/v1/event/registerTimeEvent", payload);
 }
 
+export interface ShortcutScriptPayload {
+    id: string
+    command: string[]
+    environmentsid: string[]
+}
+
 export interface ShortcutSlotPayload {
     key: string
-    script_id: string
-    command: string[]
-    environments_id: string[]
+    scripts: ShortcutScriptPayload[]
 }
 
 export interface ConfigPayload {

@@ -44,7 +44,7 @@ func (router *ExecutionRouter) getExecutions(c *gin.Context) {
 }
 
 func (router *ExecutionRouter) startExecution(c *gin.Context) {
-	req := &models.ExecuteScriptRequest{}
+	req := &models.ExecuteScriptsRequest{}
 
 	if err := c.ShouldBind(req); err != nil {
 		c.JSON(400, gin.H{
@@ -54,17 +54,15 @@ func (router *ExecutionRouter) startExecution(c *gin.Context) {
 		return
 	}
 
-	if len(req.Id) == 0 {
+	if len(req.ExecuteScripts) == 0 {
 		c.JSON(400, gin.H{
 			"message": "invalid arguments",
 		})
 		return
 	}
 
-	_, err := services.GetCaller().MakeAndStartExecution(
-		req.Id,
-		req.Command,
-		req.EnvironmentsId,
+	_, err := services.GetCaller().MakeAndStartExecutions(
+		req.ExecuteScripts,
 		services.GetScriptProvider(),
 		services.GetEnvironmentProvider(),
 	)

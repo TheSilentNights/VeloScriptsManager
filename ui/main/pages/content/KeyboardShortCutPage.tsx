@@ -3,7 +3,6 @@ import {App, Button, Card, Select, Space, Spin, Tag, Typography} from "antd";
 import {EditOutlined, LoadingOutlined, ReloadOutlined, SaveOutlined} from "@ant-design/icons";
 import {useConfigStore} from "../../store/configStore";
 import {useScriptStore} from "../../store/scriptStore";
-import {useEnvironmentStore} from "../../store/environmentStore";
 import type {Script} from "../../types/models";
 import type {ShortcutSlotPayload} from "../../ts/api";
 
@@ -67,6 +66,11 @@ function buildAccelerator(e: KeyboardEvent): string {
     return [...modifiers, mainKey].join("+");
 }
 
+interface SlotDraft {
+    key: string
+    script_ids: string[]
+}
+
 export default function KeyboardShortCutPage() {
     const {message} = App.useApp();
     const font_size = useConfigStore((s) => s.font_size);
@@ -77,23 +81,23 @@ export default function KeyboardShortCutPage() {
     const saveConfig = useConfigStore((s) => s.update);
     const scripts = useScriptStore((s) => s.scripts);
     const loadScripts = useScriptStore((s) => s.load);
-    const nameOf = useEnvironmentStore((s) => s.nameOf);
-    const loadEnvironments = useEnvironmentStore((s) => s.load);
 
     //stores the temporary script commands and environments
-    const [draft, setDraft] = useState<ShortcutSlotPayload[] | null>(null);
+    const [draft, setDraft] = useState<SlotDraft[] | null>(null);
     const [saving, setSaving] = useState(false);
     const [recordingSlot, setRecordingSlot] = useState<number | null>(null);
 
     useEffect(() => {
         void loadConfig();
         void loadScripts();
-        void loadEnvironments();
-    }, [loadConfig, loadScripts, loadEnvironments]);
+    }, [loadConfig, loadScripts]);
 
     useEffect(() => {
         if (!configLoading && !configError) {
-            setDraft(shortcuts);
+            setDraft(shortcuts.map((slot) => ({
+                key: slot.key,
+                script_ids: slot.scripts.map((script) => script.id),
+            })));
         }
     }, [configLoading, configError, shortcuts]);
 
@@ -141,7 +145,7 @@ export default function KeyboardShortCutPage() {
         return () => window.removeEventListener("keydown", handler, true);
     }, [recordingSlot, draft, message]);
 
-    const updateSlot = (index: number, slot: ShortcutSlotPayload) => {
+    const updateSlot = (index: number, slot: SlotDraft) => {
         setDraft((prev) => {
             if (!prev) return prev;
             const next = [...prev];
@@ -150,18 +154,17 @@ export default function KeyboardShortCutPage() {
         });
     };
 
-    const handleScriptChange = (index: number, value: string | undefined) => {
-        const script = scripts.find((s) => s.id === value);
-        updateSlot(index, {
-            key: draft?.[index]?.key ?? "",
-            script_id: value ?? "",
-            command: script ? [...script.command] : [],
-            environments_id: script ? [...script.environments] : [],
+    const handleScriptsChange = (index: number, value: string[]) => {
+        setDraft((prev) => {
+            if (!prev) return prev;
+            const next = [...prev];
+            next[index] = {...next[index], script_ids: value};
+            return next;
         });
     };
 
     const handleRefresh = async () => {
-        await Promise.all([loadConfig(), loadScripts(), loadEnvironments()]);
+        await Promise.all([loadConfig(), loadScripts()]);
         if (useConfigStore.getState().error) return;
         message.success("已刷新配置");
     };
@@ -171,7 +174,15 @@ export default function KeyboardShortCutPage() {
         //stores the temporary draft of the shortcuts to be save
         setSaving(true);
         try {
-            await saveConfig({font_size: font_size, shortcuts: draft});
+            const shortcuts: ShortcutSlotPayload[] = draft.map((slot) => ({
+                key: slot.key,
+                scripts: slot.script_ids.map((script_id) => ({
+                    id: script_id,
+                    command: [],
+                    environmentsid: [],
+                })),
+            }));
+            await saveConfig({font_size: font_size, shortcuts: shortcuts});
             message.success("已保存快捷键槽位");
         } catch (e) {
             console.log(e);
@@ -216,15 +227,12 @@ export default function KeyboardShortCutPage() {
                                 index={index}
                                 slot={slot}
                                 scripts={scripts}
-                                nameOf={nameOf}
                                 recording={recordingSlot === index}
                                 recordingBlocked={recordingSlot !== null && recordingSlot !== index}
                                 onRecordStart={() => setRecordingSlot(index)}
                                 onRecordCancel={() => setRecordingSlot(null)}
                                 onKeyClear={() => updateSlot(index, {...slot, key: ""})}
-                                onScriptChange={(value) => handleScriptChange(index, value)}
-                                onCommandChange={(value) => updateSlot(index, {...slot, command: value})}
-                                onEnvironmentsChange={(value) => updateSlot(index, {...slot, environments_id: value})}
+                                onScriptsChange={(value) => handleScriptsChange(index, value)}
                             />
                         ))}
                     </div>
@@ -236,41 +244,37 @@ export default function KeyboardShortCutPage() {
 
 interface SlotCardProps {
     index: number
-    slot: ShortcutSlotPayload
+    slot: SlotDraft
     scripts: Script[]
-    nameOf: (id: string) => string
     recording: boolean
     recordingBlocked: boolean
     onRecordStart: () => void
     onRecordCancel: () => void
     onKeyClear: () => void
-    onScriptChange: (value: string | undefined) => void
-    onCommandChange: (value: string[]) => void
-    onEnvironmentsChange: (value: string[]) => void
+    onScriptsChange: (value: string[]) => void
 }
 
 function SlotCard({
         index,
         slot,
         scripts,
-        nameOf,
         recording,
         recordingBlocked,
         onRecordStart,
         onRecordCancel,
         onKeyClear,
-        onScriptChange,
-        onCommandChange,
-        onEnvironmentsChange,
+        onScriptsChange,
     }: SlotCardProps) {
-    const script = scripts.find((s) => s.id === slot.script_id);
     const scriptOptions = scripts.map((s) => ({
         label: s.name,
         value: s.id,
     }));
-    if (slot.script_id && !script) {
-        scriptOptions.push({label: "脚本已删除", value: slot.script_id});
-    }
+    slot.script_ids.forEach((id) => {
+        if (!scripts.some((s) => s.id === id)) {
+            scriptOptions.push({label: "脚本已删除", value: id});
+        }
+    });
+    const hasDeletedScript = slot.script_ids.some((id) => !scripts.some((s) => s.id === id));
 
     return (
         <Card
@@ -313,54 +317,17 @@ function SlotCard({
                         绑定脚本
                     </Typography.Text>
                     <Select
+                        mode="multiple"
                         style={{width: "100%"}}
                         placeholder="未绑定"
-                        value={slot.script_id || undefined}
+                        value={slot.script_ids}
                         allowClear
                         options={scriptOptions}
                         maxTagCount="responsive"
-                        onChange={onScriptChange}
+                        onChange={onScriptsChange}
                     />
                 </div>
-                {script && (
-                    <>
-                        <div>
-                            <Typography.Text type="secondary" style={{fontSize: 12}}>
-                                启用命令 (command)
-                            </Typography.Text>
-                            <Select
-                                mode="multiple"
-                                style={{width: "100%"}}
-                                placeholder="选择启用的命令节点"
-                                value={slot.command}
-                                options={script.command.map((c) => ({
-                                    label: c,
-                                    value: c,
-                                }))}
-                                maxTagCount="responsive"
-                                onChange={onCommandChange}
-                            />
-                        </div>
-                        <div>
-                            <Typography.Text type="secondary" style={{fontSize: 12}}>
-                                启用环境 (environments)
-                            </Typography.Text>
-                            <Select
-                                mode="multiple"
-                                style={{width: "100%"}}
-                                placeholder="选择启用的环境"
-                                value={slot.environments_id}
-                                options={script.environments.map((id) => ({
-                                    label: nameOf(id),
-                                    value: id,
-                                }))}
-                                maxTagCount="responsive"
-                                onChange={onEnvironmentsChange}
-                            />
-                        </div>
-                    </>
-                )}
-                {slot.script_id && !script && (
+                {hasDeletedScript && (
                     <Typography.Text type="danger" style={{fontSize: 12}}>
                         绑定的脚本已被删除
                     </Typography.Text>

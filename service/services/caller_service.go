@@ -13,14 +13,6 @@ import (
 )
 
 type Caller interface {
-	MakeAndStartExecution(
-		scriptId string,
-		command []string,
-		environmentsId []string,
-		scriptProvider ScriptProvider,
-		environmentProvider EnvironmentProvider,
-	) ([]*executor.Execution, error)
-
 	MakeAndStartExecutions(
 		scripts []models.ExecuteScriptRequest,
 		scriptProvider ScriptProvider,

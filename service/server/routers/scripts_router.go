@@ -182,53 +182,6 @@ func (router *ScriptsRouter) UpdateScript(c *gin.Context) {
 	})
 }
 
-// ExecuteScript starts the script identified by the request id asynchronously
-// and returns the execution id immediately.
-func (router *ScriptsRouter) ExecuteScript(c *gin.Context) {
-	var req models.ExecuteScriptRequest
-
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(400, gin.H{
-			"message": "invalid arguments",
-			"data":    err.Error(),
-		})
-		return
-	}
-
-	if req.Id == "" {
-		c.JSON(400, gin.H{
-			"message": "invalid arguments",
-			"data":    req,
-		})
-		return
-	}
-
-	executions, apiErr := router.callerService.MakeAndStartExecution(
-		req.Id,
-		req.Command,
-		req.EnvironmentsId,
-		router.scriptService,
-		router.environmentService,
-	)
-
-	if apiErr != nil {
-		c.JSON(500, gin.H{
-			"message": "execute script failed",
-			"data":    apiErr.Error(),
-		})
-		return
-	}
-
-	c.JSON(200, gin.H{
-		"message": "success",
-		"data": gin.H{
-			"executionId": executions[0].GetExecutionId(),
-			"scriptId":    executions[0].GetScriptInfo().ScriptID,
-			"name":        executions[0].GetScriptInfo().Name,
-		},
-	})
-}
-
 func (scriptRouter *ScriptsRouter) GetScriptService() *services.ScriptService {
 	return scriptRouter.scriptService
 }

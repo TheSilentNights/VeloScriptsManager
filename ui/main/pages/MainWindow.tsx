@@ -2,7 +2,7 @@ import {useEffect} from "react";
 import {App, ConfigProvider} from "antd";
 import {AppShell} from "./AppShell.tsx";
 import {useConfigStore} from "../store/configStore.ts";
-import {executeScript} from "../ts/api.ts";
+import {executeScripts} from "../ts/api.ts";
 
 export default function MainWindow() {
     const font_size = useConfigStore((s) => s.font_size);
@@ -35,8 +35,8 @@ function ShortcutExecutor() {
             window.electronAPI.registerKey(key);
             return window.electronAPI.onKeyPressed(key, () => {
                 const slot = useConfigStore.getState().shortcuts.find((s) => s.key === key);
-                if (!slot || slot.script_id === "") return;
-                executeScript(slot.script_id, slot.command, slot.environments_id)
+                if (!slot || slot.scripts.length === 0) return;
+                executeScripts({scripts: slot.scripts})
                     .then(() => {
                         message.success(`快捷键 ${key} 已触发脚本执行`);
                     })
