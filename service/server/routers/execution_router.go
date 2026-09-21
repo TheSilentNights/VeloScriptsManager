@@ -76,8 +76,8 @@ func (router *ExecutionRouter) startExecution(c *gin.Context) {
 		})
 		return
 	}
-
 }
+
 func (router *ExecutionRouter) killExecution(c *gin.Context) {
 	req := &models.DeleteRequest{}
 

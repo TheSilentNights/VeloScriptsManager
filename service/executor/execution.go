@@ -32,6 +32,7 @@ type Execution struct {
 	scriptInfo  *ScriptInfo
 
 	doFinishOnce sync.Once
+	finishChan   chan struct{}
 	isKilled     bool
 
 	mu sync.Mutex
@@ -42,7 +43,14 @@ type Execution struct {
 	status   string // running | finished | failed | prepare | killed
 }
 
-func NewExecution(scriptID string, name string, command []string, workDir string, environments []string) *Execution {
+func NewExecution(
+	scriptID string,
+	name string,
+	workDir string,
+	command []string,
+	environments []string,
+	finishChan chan struct{},
+) *Execution {
 	return &Execution{
 		executionId: utils.GenerateExecutionId(),
 		scriptInfo: &ScriptInfo{
@@ -53,8 +61,9 @@ func NewExecution(scriptID string, name string, command []string, workDir string
 			Command:               command,
 			EnvironmentsFlattened: environments,
 		},
-		status:   "prepare",
-		exitCode: -1,
+		finishChan: finishChan,
+		status:     "prepare",
+		exitCode:   -1,
 	}
 }
 
@@ -112,6 +121,9 @@ func (execution *Execution) doFinish(exitCode int, status string, err error, fro
 	defer execution.mu.Unlock()
 
 	execution.doFinishOnce.Do(func() {
+		if execution.finishChan != nil {
+			close(execution.finishChan)
+		}
 		if !fromKill && execution.isKilled {
 			return
 		}

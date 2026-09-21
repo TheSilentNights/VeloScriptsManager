@@ -60,15 +60,11 @@ func (router *EventRouter) registerFileChangeEvent(c *gin.Context) {
 		return
 	}
 	events.RegisterFileChangeEvent(req.Path, func() {
-		for _, script := range req.ExecuteScripts {
-			router.callerService.MakeAndStartExecution(
-				script.Id,
-				script.Command,
-				script.EnvironmentsId,
-				services.GetScriptProvider(),
-				services.GetEnvironmentProvider(),
-			)
-		}
+		router.callerService.MakeAndStartExecutions(
+			req.ExecuteScripts,
+			services.GetScriptProvider(),
+			services.GetEnvironmentProvider(),
+		)
 	})
 }
 
@@ -83,14 +79,10 @@ func (router *EventRouter) registerTimeEvent(c *gin.Context) {
 		return
 	}
 	events.RegisterTimeEvent(req.Interval, req.Repeat, func() {
-		for _, script := range req.ExecuteScripts {
-			router.callerService.MakeAndStartExecution(
-				script.Id,
-				script.Command,
-				script.EnvironmentsId,
-				services.GetScriptProvider(),
-				services.GetEnvironmentProvider(),
-			)
-		}
+		router.callerService.MakeAndStartExecutions(
+			req.ExecuteScripts,
+			services.GetScriptProvider(),
+			services.GetEnvironmentProvider(),
+		)
 	})
 }

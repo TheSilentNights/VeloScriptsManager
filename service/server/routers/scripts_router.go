@@ -203,7 +203,7 @@ func (router *ScriptsRouter) ExecuteScript(c *gin.Context) {
 		return
 	}
 
-	execution, apiErr := router.callerService.MakeAndStartExecution(
+	executions, apiErr := router.callerService.MakeAndStartExecution(
 		req.Id,
 		req.Command,
 		req.EnvironmentsId,
@@ -222,9 +222,9 @@ func (router *ScriptsRouter) ExecuteScript(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"message": "success",
 		"data": gin.H{
-			"executionId": execution.GetExecutionId(),
-			"scriptId":    execution.GetScriptInfo().ScriptID,
-			"name":        execution.GetScriptInfo().Name,
+			"executionId": executions[0].GetExecutionId(),
+			"scriptId":    executions[0].GetScriptInfo().ScriptID,
+			"name":        executions[0].GetScriptInfo().Name,
 		},
 	})
 }

@@ -12,11 +12,15 @@ import (
 
 const shortcutSlotCount = 10
 
-type ShortcutSlot struct {
-	Key            string   `yaml:"key" json:"key" mapstructure:"key"`
+type ShortcutScript struct {
 	ScriptID       string   `yaml:"script_id" json:"script_id" mapstructure:"script_id"`
 	Command        []string `yaml:"command" json:"command" mapstructure:"command"`
 	EnvironmentsID []string `yaml:"environments_id" json:"environments_id" mapstructure:"environments_id"`
+}
+
+type ShortcutSlot struct {
+	Key     string           `yaml:"key" json:"key" mapstructure:"key"`
+	Scripts []ShortcutScript `yaml:"scripts" json:"scripts" mapstructure:"scripts"`
 }
 
 type Config struct {
@@ -108,18 +112,22 @@ func normalizeShortcuts(shortcuts []ShortcutSlot) []ShortcutSlot {
 	normalized := make([]ShortcutSlot, shortcutSlotCount)
 	for i := range normalized {
 		normalized[i] = ShortcutSlot{
-			Command:        []string{},
-			EnvironmentsID: []string{},
+			Scripts: []ShortcutScript{},
 		}
 	}
 	for i := 0; i < len(shortcuts) && i < shortcutSlotCount; i++ {
 		slot := shortcuts[i]
-		if slot.Command == nil {
-			slot.Command = []string{}
+		scripts := make([]ShortcutScript, 0, len(slot.Scripts))
+		for _, script := range slot.Scripts {
+			if script.Command == nil {
+				script.Command = []string{}
+			}
+			if script.EnvironmentsID == nil {
+				script.EnvironmentsID = []string{}
+			}
+			scripts = append(scripts, script)
 		}
-		if slot.EnvironmentsID == nil {
-			slot.EnvironmentsID = []string{}
-		}
+		slot.Scripts = scripts
 		normalized[i] = slot
 	}
 	return normalized

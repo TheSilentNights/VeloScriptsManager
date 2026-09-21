@@ -30,31 +30,86 @@ func GetExecutionProvider() ExecutionProvider {
 }
 
 func (service *ExecutionService) MakeAndStartExecution(
-	id string,
-	scriptName string,
-	command []string,
-	workDir string,
-	env []string,
-) (*executor.Execution, error) {
+	scriptOptions *[]models.ScriptOption,
+) ([]*executor.Execution, error) {
+	if scriptOptions == nil || len(*scriptOptions) == 0 {
+		return nil, ierrors.InvalidScriptOption
+	}
 
-	execution := executor.NewExecution(
-		id,
-		scriptName,
-		command,
-		workDir,
-		env,
+	options := *scriptOptions
+
+	firstFinishChan := make(chan struct{})
+	first := executor.NewExecution(
+		options[0].ID,
+		options[0].ScriptName,
+		options[0].WorkDir,
+		options[0].Command,
+		options[0].Env,
+		firstFinishChan,
 	)
 
-	startErr := execution.Start(context.Background())
+	startErr := first.Start(context.Background())
 
 	if startErr != nil {
 		log.Printf("start execution failed: %v", startErr)
 		return nil, ierrors.ExecuteScriptError
 	}
 
-	service.executions.Add(execution)
+	service.executions.Add(first)
 
-	return execution, nil
+	if len(options) > 1 {
+		go service.runExecutionChain(first, firstFinishChan, options[1:])
+	}
+
+	return []*executor.Execution{first}, nil
+}
+
+func (service *ExecutionService) runExecutionChain(
+	prev *executor.Execution,
+	prevFinishChan <-chan struct{},
+	options []models.ScriptOption,
+) {
+	for _, option := range options {
+		<-prevFinishChan
+
+		if prev.GetStatus() != "finished" {
+			log.Printf("execution chain stopped: execution %s ended with status %s",
+				prev.GetExecutionId(), prev.GetStatus())
+			return
+		}
+
+		finishChan := make(chan struct{})
+		execution := executor.NewExecution(
+			option.ID,
+			option.ScriptName,
+			option.WorkDir,
+			option.Command,
+			option.Env,
+			finishChan,
+		)
+
+		startErr := execution.Start(context.Background())
+		if startErr != nil {
+			log.Printf("start execution failed: %v", startErr)
+			return
+		}
+
+		service.executions.Add(execution)
+		prev = execution
+		prevFinishChan = finishChan
+	}
+}
+
+func waitForExecutionFinish(channel chan struct{}, callback func() error) error {
+
+	<-channel
+
+	err := callback()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (service *ExecutionService) GetExecution(id string) (*executor.Execution, error) {

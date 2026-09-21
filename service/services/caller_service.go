@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github/TheSilentNights/VeloScriptsManager/service/executor"
 	"github/TheSilentNights/VeloScriptsManager/service/ierrors"
+	"github/TheSilentNights/VeloScriptsManager/service/models"
 	"sort"
 	"strings"
 
@@ -18,7 +19,13 @@ type Caller interface {
 		environmentsId []string,
 		scriptProvider ScriptProvider,
 		environmentProvider EnvironmentProvider,
-	) (*executor.Execution, error)
+	) ([]*executor.Execution, error)
+
+	MakeAndStartExecutions(
+		scripts []models.ExecuteScriptRequest,
+		scriptProvider ScriptProvider,
+		environmentProvider EnvironmentProvider,
+	) ([]*executor.Execution, error)
 }
 
 type CallerService struct {
@@ -44,35 +51,64 @@ func (service *CallerService) MakeAndStartExecution(
 	environmentsId []string,
 	scriptProvider ScriptProvider,
 	environmentProvider EnvironmentProvider,
-) (*executor.Execution, error) {
-	script, err := scriptProvider.GetScript(scriptId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ierrors.ScriptNotFound
-		}
-		return nil, ierrors.GetScriptDbError
-	}
-
-	if len(command) == 0 {
-		command = script.Command
-	}
-
-	if len(environmentsId) == 0 {
-		environmentsId = script.Environments
-	}
-
-	env, apiErr := resolveEnvironmentVars(environmentsId, environmentProvider)
-	if apiErr != nil {
-		return nil, apiErr
-	}
-
-	return service.executionService.MakeAndStartExecution(
-		scriptId,
-		script.Name,
-		command,
-		script.WorkDir,
-		env,
+) ([]*executor.Execution, error) {
+	return service.MakeAndStartExecutions(
+		[]models.ExecuteScriptRequest{
+			{
+				Id:             scriptId,
+				Command:        command,
+				EnvironmentsId: environmentsId,
+			},
+		},
+		scriptProvider,
+		environmentProvider,
 	)
+}
+
+func (service *CallerService) MakeAndStartExecutions(
+	scripts []models.ExecuteScriptRequest,
+	scriptProvider ScriptProvider,
+	environmentProvider EnvironmentProvider,
+) ([]*executor.Execution, error) {
+	if len(scripts) == 0 {
+		return nil, ierrors.InvalidScriptOption
+	}
+
+	options := make([]models.ScriptOption, 0, len(scripts))
+	for _, script := range scripts {
+		record, err := scriptProvider.GetScript(script.Id)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, ierrors.ScriptNotFound
+			}
+			return nil, ierrors.GetScriptDbError
+		}
+
+		command := script.Command
+		if len(command) == 0 {
+			command = record.Command
+		}
+
+		environmentsId := script.EnvironmentsId
+		if len(environmentsId) == 0 {
+			environmentsId = record.Environments
+		}
+
+		env, apiErr := resolveEnvironmentVars(environmentsId, environmentProvider)
+		if apiErr != nil {
+			return nil, apiErr
+		}
+
+		options = append(options, models.ScriptOption{
+			ID:         script.Id,
+			ScriptName: record.Name,
+			WorkDir:    record.WorkDir,
+			Command:    command,
+			Env:        env,
+		})
+	}
+
+	return service.executionService.MakeAndStartExecution(&options)
 }
 
 func resolveEnvironmentVars(ids []string, environmentProvider EnvironmentProvider) ([]string, error) {
