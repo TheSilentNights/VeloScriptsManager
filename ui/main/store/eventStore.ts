@@ -4,9 +4,11 @@ import {
     fetchEvents,
     registerFileChangeEvent as apiRegisterFileChangeEvent,
     registerTimeEvent as apiRegisterTimeEvent,
-    type FileChangeEventPayload,
-    type TimeEventPayload,
+
 } from "../ts/api";
+import type {FileChangeEventPayload, TimeEventPayload} from "../ts/models";
+
+
 
 interface EventState {
     events: EventInfo[]

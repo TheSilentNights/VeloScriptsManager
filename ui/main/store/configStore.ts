@@ -1,10 +1,10 @@
 import {create} from "zustand";
+
+import {fetchConfig, updateConfig as apiUpdateConfig} from "../ts/api";
 import {
-    fetchConfig,
-    updateConfig as apiUpdateConfig,
     type ConfigPayload,
     type ShortcutSlotPayload,
-} from "../ts/api";
+} from "../ts/models";
 
 const slotCount = 10;
 

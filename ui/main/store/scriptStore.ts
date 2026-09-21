@@ -5,8 +5,8 @@ import {
     deleteScript as apiDeleteScript,
     fetchScripts,
     updateScript as apiUpdateScript,
-    type ScriptPayload,
 } from "../ts/api";
+import type {ScriptPayload} from "../ts/models";
 
 interface ScriptState {
     scripts: Script[]

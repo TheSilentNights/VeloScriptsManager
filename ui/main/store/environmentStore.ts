@@ -5,8 +5,9 @@ import {
     deleteEnvironment as apiDeleteEnvironment,
     fetchEnvironments,
     updateEnvironment as apiUpdateEnvironment,
-    type EnvironmentPayload,
 } from "../ts/api";
+
+import type {EnvironmentPayload} from "../ts/models";
 
 interface EnvironmentState {
     environments: Environment[]

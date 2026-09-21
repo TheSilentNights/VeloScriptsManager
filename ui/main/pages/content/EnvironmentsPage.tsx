@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {App, Button, Empty, Space, Spin} from "antd";
 import {PlusOutlined, LoadingOutlined, ReloadOutlined} from "@ant-design/icons";
 import {useEnvironmentStore} from "../../store/environmentStore";
-import type {EnvironmentPayload} from "../../ts/api";
+import type {EnvironmentPayload} from "../../ts/models";
 import {EnvironmentTile} from "./components/environments/EnvironmentTile";
 import {EnvironmentEditorModal} from "./components/environments/EnvironmentEditorModal";
 

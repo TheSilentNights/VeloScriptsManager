@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {Form, Input, InputNumber, Modal, Segmented, Select, Switch} from "antd";
 import {ClockCircleOutlined, FileSearchOutlined} from "@ant-design/icons";
 import type {Script} from "../../../../types/models";
-import type {FileChangeEventPayload, TimeEventPayload} from "../../../../ts/api";
+import type {FileChangeEventPayload, TimeEventPayload} from "../../../../ts/models";
 
 type EventType = "fileChange" | "time";
 

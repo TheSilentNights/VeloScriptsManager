@@ -16,7 +16,8 @@ import {
     PlayCircleOutlined,
 } from "@ant-design/icons";
 import type {Script} from "../../../../types/models";
-import {executeScript, type ScriptPayload} from "../../../../ts/api";
+import {executeScript} from "../../../../ts/api";
+import type {ScriptPayload} from "../../../../ts/models";
 import {useEnvironmentStore} from "../../../../store/environmentStore";
 import {useScriptStore} from "../../../../store/scriptStore";
 import {useExecutionStore, selectRunningCount} from "../../../../store/executionStore";

@@ -9,7 +9,7 @@ import {
 } from "antd";
 import {PlusOutlined} from "@ant-design/icons";
 import type {Environment, Script} from "../../../../types/models";
-import type {ScriptPayload} from "../../../../ts/api";
+import type {ScriptPayload} from "../../../../ts/models";
 
 interface ScriptEditorModalProps {
     open: boolean

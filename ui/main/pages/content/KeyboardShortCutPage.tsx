@@ -4,7 +4,7 @@ import {EditOutlined, LoadingOutlined, ReloadOutlined, SaveOutlined} from "@ant-
 import {useConfigStore} from "../../store/configStore";
 import {useScriptStore} from "../../store/scriptStore";
 import type {Script} from "../../types/models";
-import type {ShortcutSlotPayload} from "../../ts/api";
+import type {ShortcutSlotPayload} from "../../ts/models";
 
 const modifierProps: Array<["ctrlKey" | "altKey" | "shiftKey" | "metaKey", string]> = [
     ["ctrlKey", "Control"],

@@ -1,5 +1,15 @@
 import axios, {type AxiosRequestConfig} from "axios";
-import type {Environment, EnvVar, EventInfo, ExecutionInfo, Script} from "../types/models";
+import type {Environment, EventInfo, ExecutionInfo, Script} from "../types/models";
+import type {
+    ConfigPayload,
+    EnvironmentPayload,
+    ExecuteScriptsPayload,
+    FileChangeEventPayload,
+    ScriptPayload,
+    TimeEventPayload,
+} from "./models";
+
+
 
 const http = axios.create({
     headers: {"Content-Type": "application/json"},
@@ -83,13 +93,6 @@ export function fetchScripts(): Promise<Script[]> {
     return sendGet<Script[]>("/api/v1/scripts/");
 }
 
-export interface ScriptPayload {
-    name: string
-    workDir: string
-    command: string[]
-    environmentsid: string[]
-}
-
 export function addScript(payload: ScriptPayload): Promise<unknown> {
     return sendPost("/api/v1/scripts/add", payload);
 }
@@ -121,22 +124,12 @@ export function executeScript(
     });
 }
 
-export interface ExecuteScriptsPayload {
-    scripts: ExecuteScriptPayload[]
-}
-
 export function executeScripts(payload: ExecuteScriptsPayload): Promise<void> {
     return sendPost<void>("/api/v1/execution/execute", payload);
 }
 
 export function fetchEnvironments(): Promise<Environment[]> {
     return sendGet<Environment[]>("/api/v1/environments/",{method: "GET"});
-}
-
-export interface EnvironmentPayload {
-    name: string
-    paths: string[]
-    env: EnvVar[]
 }
 
 export function addEnvironment(payload: EnvironmentPayload): Promise<unknown> {
@@ -150,37 +143,20 @@ export function updateEnvironment(id: string, payload: EnvironmentPayload): Prom
     });
 }
 
-export function deleteEnvironment(id: string): Promise<unknown> {
-    return sendDelete("/api/v1/environments/delete",{params: {id:id}});
+export function deleteEnvironment(id: string): Promise<void> {
+    return sendDelete<void>("/api/v1/environments/delete",{params: {id:id}});
 }
 
 export function getExecutions(): Promise<ExecutionInfo[]> {
     return sendGet<ExecutionInfo[]>("/api/v1/execution/");
 }
 
-export function deleteExecution(id: string): Promise<unknown> {
-    return sendPost("/api/v1/execution/kill", {id: id});
+export function deleteExecution(id: string): Promise<void> {
+    return sendPost<void>("/api/v1/execution/kill", {id: id});
 }
 
 export function fetchEvents(): Promise<EventInfo[]> {
     return sendGet<EventInfo[]>("/api/v1/event/");
-}
-
-export interface ExecuteScriptPayload {
-    id: string
-    command?: string[]
-    environmentsid?: string[]
-}
-
-export interface FileChangeEventPayload {
-    path: string
-    scripts: ExecuteScriptPayload[]
-}
-
-export interface TimeEventPayload {
-    interval: number
-    repeat: boolean
-    scripts: ExecuteScriptPayload[]
 }
 
 export function registerFileChangeEvent(payload: FileChangeEventPayload): Promise<void> {
@@ -189,22 +165,6 @@ export function registerFileChangeEvent(payload: FileChangeEventPayload): Promis
 
 export function registerTimeEvent(payload: TimeEventPayload): Promise<void> {
     return sendPost<void>("/api/v1/event/registerTimeEvent", payload);
-}
-
-export interface ShortcutScriptPayload {
-    id: string
-    command: string[]
-    environmentsid: string[]
-}
-
-export interface ShortcutSlotPayload {
-    key: string
-    scripts: ShortcutScriptPayload[]
-}
-
-export interface ConfigPayload {
-    font_size: number
-    shortcuts: ShortcutSlotPayload[] | null
 }
 
 export function fetchConfig(): Promise<ConfigPayload> {

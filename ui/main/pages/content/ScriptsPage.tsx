@@ -4,7 +4,7 @@ import {PlusOutlined, LoadingOutlined, ReloadOutlined} from "@ant-design/icons";
 import {useScriptStore} from "../../store/scriptStore";
 import {useEnvironmentStore} from "../../store/environmentStore";
 import {useExecutionStore} from "../../store/executionStore";
-import type {ScriptPayload} from "../../ts/api";
+import type {ScriptPayload} from "../../ts/models";
 import {ScriptTile} from "./components/scripts/ScriptTile";
 import {ScriptEditorModal} from "./components/scripts/ScriptEditorModal";
 

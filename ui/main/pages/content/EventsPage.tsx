@@ -3,7 +3,7 @@ import {App, Button, Empty, Space, Spin} from "antd";
 import {LoadingOutlined, PlusOutlined, ReloadOutlined} from "@ant-design/icons";
 import {useEventStore} from "../../store/eventStore";
 import {useScriptStore} from "../../store/scriptStore";
-import type {FileChangeEventPayload, TimeEventPayload} from "../../ts/api";
+import type {FileChangeEventPayload, TimeEventPayload} from "../../ts/models";
 import {EventTile} from "./components/events/EventTile";
 import {EventEditorModal} from "./components/events/EventEditorModal";
 
