@@ -10,7 +10,7 @@ import {
 } from "antd";
 import {MinusCircleOutlined, PlusOutlined} from "@ant-design/icons";
 import type {Environment} from "../../../../types/models";
-import type {EnvironmentPayload} from "../../../../ts/api";
+import type {EnvironmentPayload} from "../../../../ts/models";
 
 interface EnvironmentEditorModalProps {
     open: boolean

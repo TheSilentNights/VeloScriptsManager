@@ -37,26 +37,6 @@ func GetCaller() Caller {
 	return callerService
 }
 
-func (service *CallerService) MakeAndStartExecution(
-	scriptId string,
-	command []string,
-	environmentsId []string,
-	scriptProvider ScriptProvider,
-	environmentProvider EnvironmentProvider,
-) ([]*executor.Execution, error) {
-	return service.MakeAndStartExecutions(
-		[]models.ExecuteScriptRequest{
-			{
-				Id:             scriptId,
-				Command:        command,
-				EnvironmentsId: environmentsId,
-			},
-		},
-		scriptProvider,
-		environmentProvider,
-	)
-}
-
 func (service *CallerService) MakeAndStartExecutions(
 	scripts []models.ExecuteScriptRequest,
 	scriptProvider ScriptProvider,
